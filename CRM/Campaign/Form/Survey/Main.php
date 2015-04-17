@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                                |
+ | CiviCRM version 4.6                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2014                                |
+ | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -23,12 +23,12 @@
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
-*/
+ */
 
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2014
+ * @copyright CiviCRM LLC (c) 2004-2015
  * $Id$
  *
  */
@@ -40,18 +40,25 @@
 class CRM_Campaign_Form_Survey_Main extends CRM_Campaign_Form_Survey {
 
   /* values
-     *
-     * @var array
-     */
+   *
+   * @var array
+   */
 
   public $_values;
 
   /**
-   * Context
+   * Context.
    *
    * @var string
    */
   protected $_context;
+
+  /**
+   * Explicitly declare the entity api name.
+   */
+  public function getDefaultEntity() {
+    return 'Survey';
+  }
 
   public function preProcess() {
     parent::preProcess();
@@ -104,12 +111,10 @@ class CRM_Campaign_Form_Survey_Main extends CRM_Campaign_Form_Survey {
    * Set default values for the form. Note that in edit/view mode
    * the default values are retrieved from the database
    *
-   * @param null
-   *
-   * @return array    array of default values
-   * @access public
+   * @return array
+   *   array of default values
    */
-  function setDefaultValues() {
+  public function setDefaultValues() {
     if ($this->_cdType) {
       return CRM_Custom_Form_CustomData::setDefaultValues($this);
     }
@@ -141,12 +146,9 @@ class CRM_Campaign_Form_Survey_Main extends CRM_Campaign_Form_Survey {
   }
 
   /**
-   * Build the form object
-   *
-   * @param null
+   * Build the form object.
    *
    * @return void
-   * @access public
    */
   public function buildQuickForm() {
     if ($this->_cdType) {
@@ -189,12 +191,9 @@ class CRM_Campaign_Form_Survey_Main extends CRM_Campaign_Form_Survey {
   }
 
   /**
-   * Process the form
-   *
-   * @param null
+   * Process the form.
    *
    * @return void
-   * @access public
    */
   public function postProcess() {
     // store the submitted values in an array
@@ -226,11 +225,13 @@ class CRM_Campaign_Form_Survey_Main extends CRM_Campaign_Form_Survey {
 
     if (!empty($this->_values['result_id'])) {
       $query = "SELECT COUNT(*) FROM civicrm_survey WHERE result_id = %1";
-      $countSurvey = (int)CRM_Core_DAO::singleValueQuery($query,
+      $countSurvey = (int) CRM_Core_DAO::singleValueQuery($query,
         array(
-          1 => array($this->_values['result_id'],
+          1 => array(
+            $this->_values['result_id'],
             'Positive',
-          ))
+          ),
+        )
       );
       // delete option group if no any survey is using it.
       if (!$countSurvey) {
@@ -240,5 +241,5 @@ class CRM_Campaign_Form_Survey_Main extends CRM_Campaign_Form_Survey {
 
     parent::endPostProcess();
   }
-}
 
+}

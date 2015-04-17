@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                                |
+ | CiviCRM version 4.6                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2014                                |
+ | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -30,7 +30,7 @@
   {if $batchAmountMismatch}
     <div class="status message status-warning">
       <div
-        class="icon alert-icon"></div> {ts}Total for amounts entered below does not match the expected batch total.{/ts}
+        class="icon ui-icon-alert"></div> {ts}Total for amounts entered below does not match the expected batch total.{/ts}
     </div>
     <div class="crm-button crm-button_qf_Entry_upload_force-save">
       {$form._qf_Entry_upload_force.html}
@@ -129,18 +129,18 @@ CRM.$(function($) {
     $($form).ajaxSubmit(options);
   });
  
- cj('input[id*="primary_contact_"]').change(function() {
+ $('input[id*="primary_contact_"]').change(function() {
  var temp = this.id.split('_');
    var ROWID = temp[3];
-   if (cj(this).val()) {
+   if ($(this).val()) {
      updateContactInfo(ROWID,'primary_');
    }
  });
 
- cj('select[id^="option_type_"]').each(function () {
-    if (cj(this).val() == 1) {
-      cj(this).attr('disabled', true);
-      cj(this).hide();
+ $('select[id^="option_type_"]').each(function () {
+    if ($(this).val() == 1) {
+      $(this).attr('disabled', true);
+      $(this).hide();
     }
   });
 
@@ -505,8 +505,7 @@ function setDateFieldValue(fname, fieldValue, blockNo) {
   if (date_format != 'mm/dd/yy') {
     displayDateValue = cj.datepicker.formatDate(date_format, actualDateValue);
   }
-
-  cj('#field_' + blockNo + '_' + fname + '_display').val(displayDateValue);
+  cj('[id^=field_' + blockNo + '_' + fname + '_display]').val(displayDateValue);
 
   // need to fix time formatting
   if (dateValues[1]) {

@@ -1,35 +1,34 @@
 <?php
-
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                       |
+ | CiviCRM version 4.6                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2014                    |
+ | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
- | This file is a part of CiviCRM.                      |
- |                                      |
+ | This file is a part of CiviCRM.                                    |
+ |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
- | under the terms of the GNU Affero General Public License        |
- | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.    |
- |                                    |
- | CiviCRM is distributed in the hope that it will be useful, but    |
- | WITHOUT ANY WARRANTY; without even the implied warranty of        |
- | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.          |
- | See the GNU Affero General Public License for more details.      |
- |                                    |
- | You should have received a copy of the GNU Affero General Public    |
- | License and the CiviCRM Licensing Exception along          |
- | with this program; if not, contact CiviCRM LLC            |
- | at info[AT]civicrm[DOT]org. If you have questions about the      |
- | GNU Affero General Public License or the licensing of CiviCRM,    |
- | see the CiviCRM license FAQ at http://civicrm.org/licensing      |
+ | under the terms of the GNU Affero General Public License           |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
+ |                                                                    |
+ | CiviCRM is distributed in the hope that it will be useful, but     |
+ | WITHOUT ANY WARRANTY; without even the implied warranty of         |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
+ | See the GNU Affero General Public License for more details.        |
+ |                                                                    |
+ | You should have received a copy of the GNU Affero General Public   |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
+ | at info[AT]civicrm[DOT]org. If you have questions about the        |
+ | GNU Affero General Public License or the licensing of CiviCRM,     |
+ | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
-*/
+ */
 
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2014
+ * @copyright CiviCRM LLC (c) 2004-2015
  * $Id$
  *
  */
@@ -46,12 +45,10 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
   public $_drilldownReport = array('event/income' => 'Link to Detail Report');
 
   /**
-   *
    */
   /**
-   *
    */
-  function __construct() {
+  public function __construct() {
     $this->_columns = array(
       'civicrm_contact' => array(
         'dao' => 'CRM_Contact_DAO_Contact',
@@ -163,7 +160,7 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
             'type' => CRM_Utils_Type::T_INT,
             'attributes' => array(
               'entity' => 'event',
-              'select' => array('minimumInputLength' => 0)
+              'select' => array('minimumInputLength' => 0),
             ),
           ),
           'sid' => array(
@@ -268,17 +265,17 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
     parent::__construct();
   }
 
-  function preProcess() {
+  public function preProcess() {
     parent::preProcess();
   }
 
-  //Add The statistics
   /**
+   * Add The statistics.
    * @param $rows
    *
    * @return array
    */
-  function statistics(&$rows) {
+  public function statistics(&$rows) {
 
     $statistics = parent::statistics($rows);
     $avg = NULL;
@@ -312,7 +309,7 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
     return $statistics;
   }
 
-  function select() {
+  public function select() {
     $select = array();
     $this->_columnHeaders = array();
 
@@ -367,12 +364,12 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
    *
    * @return array
    */
-  static function formRule($fields, $files, $self) {
+  public static function formRule($fields, $files, $self) {
     $errors = $grouping = array();
     return $errors;
   }
 
-  function from() {
+  public function from() {
     $this->_from = "
       FROM civicrm_participant {$this->_aliases['civicrm_participant']}
          LEFT JOIN civicrm_event {$this->_aliases['civicrm_event']}
@@ -395,12 +392,12 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
               ON {$this->_aliases['civicrm_line_item']}.entity_table = 'civicrm_participant' AND {$this->_aliases['civicrm_participant']}.id ={$this->_aliases['civicrm_line_item']}.entity_id";
   }
 
-  function storeWhereHavingClauseArray() {
+  public function storeWhereHavingClauseArray() {
     parent::storeWhereHavingClauseArray();
     $this->_whereClauses[] = "{$this->_aliases['civicrm_participant']}.is_test = 0";
   }
 
-  function groupBy() {
+  public function groupBy() {
     $this->_groupBy = "";
     if (!empty($this->_params['group_bys']) &&
       is_array($this->_params['group_bys']) &&
@@ -428,7 +425,7 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
       $this->_groupBy;
   }
 
-  function postProcess() {
+  public function postProcess() {
 
     // get ready with post process params
     $this->beginPostProcess();
@@ -453,10 +450,15 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
   }
 
   /**
-   * @param $rows
+   * Alter display of rows.
+   *
+   * Iterate through the rows retrieved via SQL and make changes for display purposes,
+   * such as rendering contacts as links.
+   *
+   * @param array $rows
+   *   Rows generated by SQL, with an array for each row.
    */
-  function alterDisplay(&$rows) {
-
+  public function alterDisplay(&$rows) {
     $entryFound = FALSE;
     $eventType = CRM_Core_OptionGroup::values('event_type');
 
@@ -537,7 +539,6 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
         $entryFound = TRUE;
       }
 
-
       // skip looking further in rows, if first row itself doesn't
       // have the column we need
       if (!$entryFound) {
@@ -545,5 +546,5 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
       }
     }
   }
-}
 
+}

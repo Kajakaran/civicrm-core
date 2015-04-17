@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                                |
+ | CiviCRM version 4.6                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2014                                |
+ | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -22,7 +22,7 @@
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
-*/
+ */
 
 require_once 'CiviTest/CiviSeleniumTestCase.php';
 
@@ -35,7 +35,7 @@ class WebTest_Profile_SearchTest extends CiviSeleniumTestCase {
     parent::setUp();
   }
 
-  function testSearchProfile() {
+  public function testSearchProfile() {
     $this->webtestLogin();
 
     // enable county field
@@ -58,7 +58,7 @@ class WebTest_Profile_SearchTest extends CiviSeleniumTestCase {
     //click on save
     $this->click('_qf_Group_next-bottom');
     $this->waitForPageToLoad($this->getTimeoutMsec());
-    $this->waitForElementPresent("xpath=//a/span[text()='Add Field']");
+    $this->waitForElementPresent("_qf_Field_next-bottom");
 
     //check for  profile create
     $this->waitForText('crm-notification-container', "Your CiviCRM Profile '{$profileTitle}' has been added. You can add fields to this profile now.");
@@ -160,12 +160,12 @@ class WebTest_Profile_SearchTest extends CiviSeleniumTestCase {
     $this->click('in_selector');
 
     // click on save
-    $this->clickLink('_qf_Field_next-bottom', "xpath=//div[@id='field_page']/div[1]/a[4]/span[text()='Use (create mode)']", FALSE);
+    $this->clickLink('_qf_Field_next-bottom', "xpath=//div[@id='field_page']/div[1]/a[4]/span[text()=' Use (create mode)']", FALSE);
 
     $uselink = explode('?', $this->getAttribute("xpath=//*[@id='field_page']/div[1]/a[4]@href"));
     $this->openCiviPage('profile/create', "$uselink[1]", '_qf_Edit_next');
     $lastName = substr(sha1(rand()), 0, 7);
-    $orgName = 'Organisation'.substr(sha1(rand()), 0, 7);
+    $orgName = 'Organisation' . substr(sha1(rand()), 0, 7);
 
     // Fill Last Name
     $this->type('last_name', $lastName);
@@ -247,4 +247,5 @@ class WebTest_Profile_SearchTest extends CiviSeleniumTestCase {
     $this->waitForText('crm-notification-container', 'Is this field hidden from other users');
     $this->select('visibility', 'value=Public Pages and Listings');
   }
+
 }

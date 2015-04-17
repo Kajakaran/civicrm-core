@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                                |
+ | CiviCRM version 4.6                                                |
  +--------------------------------------------------------------------+
  | Copyright (C) 2011 Marty Wright                                    |
  | Licensed to CiviCRM under the Academic Free License version 3.0.   |
@@ -58,7 +58,7 @@
     {else}
       {assign var='urlParams' value="action=add&reset=1"}
     {/if}
-    <a href="{crmURL p=$link q=$urlParams}" id="newScheduleReminder" class="button"><span><div class="icon add-icon"></div>{ts}Add Reminder{/ts}</span></a>
+    {crmButton p=$link q=$urlParams id="newScheduleReminder"  icon="circle-plus"}{ts}Add Reminder{/ts}{/crmButton}
   </div>
 {/if}
 {/if}

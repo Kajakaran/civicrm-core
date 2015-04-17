@@ -1,9 +1,9 @@
 <?php
 /*
    +--------------------------------------------------------------------+
-   | CiviCRM version 4.5                                                |
+   | CiviCRM version 4.6                                                |
    +--------------------------------------------------------------------+
-   | Copyright CiviCRM LLC (c) 2004-2014                                |
+   | Copyright CiviCRM LLC (c) 2004-2015                                |
    +--------------------------------------------------------------------+
    | This file is a part of CiviCRM.                                    |
    |                                                                    |
@@ -38,7 +38,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
   /**
    * FIXME: This test tries to update a contribution page (id=2) that may not exist :(
    */
-  function testOnlineMembershipRenew() {
+  public function testOnlineMembershipRenew() {
     // a random 7-char string and an even number to make this pass unique
     $hash = substr(sha1(rand()), 0, 7);
     $rand = 2 * rand(2, 50);
@@ -69,9 +69,9 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->waitForElementPresent("new_title");
 
     if ($this->isElementPresent("member_price_set_id")) {
-    $this->waitForElementPresent("member_price_set_id");
+      $this->waitForElementPresent("member_price_set_id");
 
-    $this->select("member_price_set_id", "label=- none -");
+      $this->select("member_price_set_id", "label=- none -");
     }
 
     $this->waitForElementPresent("membership_type-block");
@@ -212,7 +212,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
   /**
    * FIXME: This test tries to update a contribution page (id=2) that may not exist :(
    */
-  function testOnlineMembershipRenewChangeType() {
+  public function testOnlineMembershipRenewChangeType() {
     // a random 7-char string and an even number to make this pass unique
     $hash = substr(sha1(rand()), 0, 7);
     $rand = 2 * rand(2, 50);
@@ -243,9 +243,9 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
 
     $this->waitForElementPresent("new_title");
     if ($this->isElementPresent("member_price_set_id")) {
-    $this->waitForElementPresent("member_price_set_id");
+      $this->waitForElementPresent("member_price_set_id");
 
-    $this->select("member_price_set_id", "label=- none -");
+      $this->select("member_price_set_id", "label=- none -");
     }
 
     $this->waitForElementPresent("membership_type-block");
@@ -360,7 +360,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->assertEquals($membershipCreatedId, $membershipRenewedId);
   }
 
-  function testUpdateInheritedMembershipOnBehalfOfRenewal() {
+  public function testUpdateInheritedMembershipOnBehalfOfRenewal() {
     // Log in as admin
     $this->webtestLogin('admin');
 
@@ -394,7 +394,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->select2('member_of_contact_id', $title);
 
     $this->type('minimum_fee', '100');
-    $this->select( 'financial_type_id', 'value=2' );
+    $this->select('financial_type_id', 'value=2');
     $this->type('duration_interval', 1);
     $this->select('duration_unit', 'label=year');
     $this->select('period_type', 'value=rolling');
@@ -406,8 +406,8 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->waitForElementPresent('link=Add Membership Type');
     $this->waitForText('crm-notification-container', "The membership type 'Membership Type $title' has been saved.");
 
-    $this->waitForElementPresent("xpath=//div[@id='membership_type']/table/tbody//tr/td[1][text()='{$membershipTypeTitle}']/../td[12]/span/a[3][text()='Delete']/@href");
-    $url = $this->getAttribute("xpath=//div[@id='membership_type']/table/tbody//tr/td[1][text()='{$membershipTypeTitle}']/../td[12]/span/a[3][text()='Delete']/@href");
+    $this->waitForElementPresent("xpath=//div[@id='membership_type']/table/tbody//tr/td[1]/div[text()='{$membershipTypeTitle}']/../../td[12]/span/a[3][text()='Delete']/@href");
+    $url = $this->getAttribute("xpath=//div[@id='membership_type']/table/tbody//tr/td[1]/div[text()='{$membershipTypeTitle}']/../../td[12]/span/a[3][text()='Delete']/@href");
     $matches = array();
     preg_match('/id=([0-9]+)/', $url, $matches);
     $membershipTypeId = $matches[1];
@@ -657,5 +657,5 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
       );
     }
   }
-}
 
+}
