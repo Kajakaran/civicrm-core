@@ -1107,6 +1107,8 @@ WHERE      $group.id = {$actionSchedule->group_id}
           $groupDAO->fetch() &&
           !empty($groupDAO->saved_search_id)
         ) {
+          // force reset of group-contact-cache
+          CRM_Core_DAO::setFieldValue('CRM_Contact_DAO_Group', $actionSchedule->group_id, 'cache_date', "NULL");
           // Check that the group is in place in the cache and up to date
           CRM_Contact_BAO_GroupContactCache::check($actionSchedule->group_id);
           // Set smart group flag
