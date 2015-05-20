@@ -26,46 +26,55 @@
  */
 
 /**
+ * This api exposes CiviCRM OpenID records.
  *
- * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
+ * @package CiviCRM_APIv3
  */
 
 /**
- * form helper class for an Demographics object
+ * Add an OpenID for a contact.
+ *
+ * @param array $params
+ *
+ * @return array
  */
-class CRM_Contact_Form_Edit_Demographics {
+function civicrm_api3_open_i_d_create($params) {
+  return _civicrm_api3_basic_create(_civicrm_api3_get_BAO(__FUNCTION__), $params);
+}
 
-  /**
-   * Build the form object elements for Demographics object.
-   *
-   * @param CRM_Core_Form $form
-   *   Reference to the form object.
-   *
-   * @return void
-   */
-  public static function buildQuickForm(&$form) {
-    $form->addField('gender_id', array('entity' => 'contact', 'type' => 'Radio', 'allowClear' => TRUE));
+/**
+ * Adjust Metadata for Create action.
+ *
+ * The metadata is used for setting defaults, documentation & validation.
+ *
+ * @param array $params
+ *   Array of parameters determined by getfields.
+ */
+function _civicrm_api3_open_i_d_create_spec(&$params) {
+  $params['contact_id']['api.required'] = 1;
+}
 
-    $form->addField('birth_date', array('entity' => 'contact', 'formatType' => 'birth'));
+/**
+ * Deletes an existing OpenID.
+ *
+ * @param array $params
+ *
+ * @return array
+ *   API result Array
+ */
+function civicrm_api3_open_i_d_delete($params) {
+  return _civicrm_api3_basic_delete(_civicrm_api3_get_BAO(__FUNCTION__), $params);
+}
 
-    $form->addField('is_deceased', array('entity' => 'contact', 'label' => ts('Contact is Deceased'), 'onclick' => "showDeceasedDate()"));
-    $form->addField('deceased_date', array('entity' => 'contact', 'formatType' => 'birth'));
-  }
-
-  /**
-   * Set default values for the form. Note that in edit/view mode
-   * the default values are retrieved from the database
-   *
-   *
-   * @param CRM_Core_Form $form
-   * @param $defaults
-   *
-   * @return void
-   */
-  public static function setDefaultValues(&$form, &$defaults) {
-  }
-
+/**
+ * Retrieve one or more OpenID.
+ *
+ * @param array $params
+ *   An associative array of name/value pairs.
+ *
+ * @return array
+ *   details of found OpenID
+ */
+function civicrm_api3_open_i_d_get($params) {
+  return _civicrm_api3_basic_get(_civicrm_api3_get_BAO(__FUNCTION__), $params);
 }
