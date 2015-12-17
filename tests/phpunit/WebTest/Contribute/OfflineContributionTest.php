@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -160,7 +160,7 @@ class WebTest_Contribute_OfflineContributionTest extends CiviSeleniumTestCase {
       'Financial Type' => 'Donation',
       'Total Amount' => '100.00',
       'Contribution Status' => 'Completed',
-      'Paid By' => 'Check',
+      'Payment Method' => 'Check',
       'Check Number' => 'check #1041',
       'Non-deductible Amount' => '10.00',
       'Received Into' => $financialAccount,
@@ -204,6 +204,12 @@ class WebTest_Contribute_OfflineContributionTest extends CiviSeleniumTestCase {
 
   public function testDeductibleAmount() {
     $this->webtestLogin();
+
+    // disable verify ssl when using authorize .net
+    $this->openCiviPage("admin/setting/url", "reset=1");
+    $this->click("id=CIVICRM_QFID_0_verifySSL");
+    $this->click("id=_qf_Url_next-bottom");
+    $this->waitForPageToLoad($this->getTimeoutMsec());
 
     //add authorize .net payment processor
     $processorName = 'Webtest AuthNet' . substr(sha1(rand()), 0, 7);
@@ -283,7 +289,7 @@ class WebTest_Contribute_OfflineContributionTest extends CiviSeleniumTestCase {
       'From' => "{$firstName} {$lastName}",
       'Financial Type' => 'Donation',
       'Total Amount' => 123,
-      'Non-deductible Amount' => 123,
+      'Non-deductible Amount' => '0.00',
       'sort_name' => "$lastName, $firstName",
     );
     $this->_verifyAmounts($checkScenario4);
@@ -359,7 +365,7 @@ class WebTest_Contribute_OfflineContributionTest extends CiviSeleniumTestCase {
     $this->waitForPageToLoad($this->getTimeoutMsec());
 
     // Is status message correct?
-    $this->assertTrue($this->isTextPresent("The contribution record has been processed."), "Status message didn't show up after saving!");
+    $this->assertTrue($this->isTextPresent("The contribution record has been saved."), "Status message didn't show up after saving!");
   }
 
   /**
@@ -374,8 +380,8 @@ class WebTest_Contribute_OfflineContributionTest extends CiviSeleniumTestCase {
 
     // select show test contributions
     $this->click("contribution_test", "value=1");
-    $this->clickLink("_qf_Search_refresh", "xpath=//div[@id='contributionSearch']//table//tbody/tr[1]/td[11]/span/a[text()='View']");
-    $this->clickLink("xpath=//div[@id='contributionSearch']//table//tbody/tr[1]/td[11]/span/a[text()='View']", "_qf_ContributionView_cancel-bottom", FALSE);
+    $this->clickLink("_qf_Search_refresh", "xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[10]/span//a[text()='View']", FALSE);
+    $this->clickLink("xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[10]/span//a[text()='View']", "_qf_ContributionView_cancel-bottom", FALSE);
 
     foreach ($verifyData as $label => $value) {
       if ($label == 'sort_name') {
@@ -427,7 +433,7 @@ class WebTest_Contribute_OfflineContributionTest extends CiviSeleniumTestCase {
       'Financial Type' => 'Donation',
       'Total Amount' => '0.00',
       'Contribution Status' => 'Completed',
-      'Paid By' => 'Credit Card',
+      'Payment Method' => 'Credit Card',
     );
     $this->webtestVerifyTabularData($expected);
   }

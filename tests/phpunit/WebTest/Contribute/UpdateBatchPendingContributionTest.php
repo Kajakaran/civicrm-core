@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -49,8 +49,8 @@ class WebTest_Contribute_UpdateBatchPendingContributionTest extends CiviSelenium
 
     $this->click('radio_ts', 'ts_all');
 
-    $this->select('task', "label=Update Pending Contribution Status");
-    $this->clickLink("_qf_Search_next_action");
+    $this->select('task', "label=Update pending contribution status");
+    $this->click("_qf_Search_next_action");
     $this->select('contribution_status_id', 'label=Completed');
     $this->click('_qf_Status_next');
     $this->waitForElementPresent("_qf_Result_done");
@@ -63,7 +63,7 @@ class WebTest_Contribute_UpdateBatchPendingContributionTest extends CiviSelenium
     $this->click("_qf_Search_refresh");
 
     $this->waitForPageToLoad($this->getTimeoutMsec());
-    $this->click("xpath=//div[@id='contributionSearch']/table[@class='selector row-highlight']/tbody/tr[1]/td[11]/span/a[text()='View']");
+    $this->click("xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[10]/span//a[text()='View']");
     $this->waitForElementPresent("_qf_ContributionView_cancel-bottom");
     $expected = array(
       'Received Into' => "Deposit Bank Account",
@@ -105,7 +105,7 @@ class WebTest_Contribute_UpdateBatchPendingContributionTest extends CiviSelenium
     $this->waitForPageToLoad($this->getTimeoutMsec());
     $this->click('radio_ts', 'ts_all');
 
-    $this->select('task', "label=Update Pending Contribution Status");
+    $this->select('task', "label=Update pending contribution status");
     $this->waitForElementPresent("_qf_Search_next_action");
     $this->click("_qf_Search_next_action");
     $this->waitForPageToLoad($this->getTimeoutMsec());
@@ -121,7 +121,7 @@ class WebTest_Contribute_UpdateBatchPendingContributionTest extends CiviSelenium
     $this->click("_qf_Search_refresh");
 
     $this->waitForPageToLoad($this->getTimeoutMsec());
-    $this->click("xpath=//div[@id='contributionSearch']/table[@class='selector row-highlight']/tbody/tr[1]/td[11]/span/a[text()='View']");
+    $this->click("xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[10]/span//a[text()='View']");
     $this->waitForElementPresent("_qf_ContributionView_cancel-bottom");
     $expected = array(
       'Received Into' => "Deposit Bank Account",

@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -28,12 +28,11 @@
 (function($) {ldelim}
   // Config settings
   CRM.config.userFramework = {$config->userFramework|@json_encode};
-  CRM.config.resourceBase = {$config->resourceBase|@json_encode};
+  CRM.config.resourceBase = {$config->userFrameworkResourceURL|@json_encode};
   CRM.config.lcMessages = {$config->lcMessages|@json_encode};
   $.datepicker._defaults.dateFormat = CRM.config.dateInputFormat = {$config->dateInputFormat|@json_encode};
   CRM.config.timeIs24Hr = {if $config->timeInputFormat eq 2}true{else}false{/if};
   CRM.config.ajaxPopupsEnabled = {$ajaxPopupsEnabled|@json_encode};
-  CRM.config.userFrameworkResourceURL = {$config->userFrameworkResourceURL|@json_encode};
 
   // Merge entityRef settings
   CRM.config.entityRef = $.extend({ldelim}{rdelim}, {$entityRef|@json_encode}, CRM.config.entityRef || {ldelim}{rdelim});
@@ -61,7 +60,7 @@
     "jQueryUI": true,
     "language": {ldelim}
       "emptyTable": "{ts escape='js'}None found.{/ts}",
-      "info":  "{ts escape='js' '1=_START_ 2=_END_ 3=_TOTAL_}Showing %1 to %2 of %3 entries{/ts}",
+      "info":  "{ts escape='js' 1=_START_ 2=_END_ 3=_TOTAL_}Showing %1 to %2 of %3 entries{/ts}",
       "infoEmpty": "{ts escape='js'}Showing 0 to 0 of 0 entries{/ts}",
       "infoFiltered": "{ts escape='js' 1=_MAX_}(filtered from %1 total entries){/ts}",
       "infoPostFix": "",

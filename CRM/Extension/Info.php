@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -27,6 +27,9 @@
 
 /**
  * Metadata for an extension (e.g. the extension's "info.xml" file)
+ *
+ * @package CRM
+ * @copyright CiviCRM LLC (c) 2004-2015
  */
 class CRM_Extension_Info {
 
@@ -99,7 +102,6 @@ class CRM_Extension_Info {
    * Copy attributes from an XML document to $this
    *
    * @param SimpleXMLElement $info
-   * @return void
    */
   public function parse($info) {
     $this->key = (string) $info->attributes()->key;

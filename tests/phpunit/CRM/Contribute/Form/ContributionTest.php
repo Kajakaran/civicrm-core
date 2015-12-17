@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -85,6 +85,13 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
   protected $paymentProcessor;
 
   /**
+   * Payment processor ID.
+   *
+   * @var int
+   */
+  protected $paymentProcessorID;
+
+  /**
    * Setup function.
    */
   public function setUp() {
@@ -124,8 +131,9 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
     ));
 
     $this->products[] = $product1['values'][$product1['id']];
-    $this->paymentProcessor = $this->processorCreate();
-
+    $this->paymentProcessor = $this->dummyProcessorCreate();
+    $processor = $this->paymentProcessor->getPaymentProcessor();
+    $this->paymentProcessorID = $processor['id'];
   }
 
   /**
@@ -133,7 +141,7 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
    */
   public function tearDown() {
     $this->quickCleanUpFinancialEntities();
-    $this->quickCleanup(array('civicrm_note'));
+    $this->quickCleanup(array('civicrm_note', 'civicrm_uf_match', 'civicrm_address'));
   }
 
   /**
@@ -151,7 +159,8 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
       'contribution_status_id' => 1,
     ),
       CRM_Core_Action::ADD);
-    $this->callAPISuccessGetCount('Contribution', array('contact_id' => $this->_individualId), 1);
+    $contribution = $this->callAPISuccessGetSingle('Contribution', array('contact_id' => $this->_individualId));
+    $this->assertEmpty($contribution['amount_level']);
   }
 
   /**
@@ -173,6 +182,165 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
       'contribution_status_id' => 'Completed',
       ),
     1);
+  }
+
+  /**
+   * Test the submit function on the contribution page.
+   */
+  public function testSubmitCreditCardPayPal() {
+    $form = new CRM_Contribute_Form_Contribution();
+    $paymentProcessorID = $this->paymentProcessorCreate(array('is_test' => 0));
+    $form->_mode = 'Live';
+    try {
+      $form->testSubmit(array(
+        'total_amount' => 50,
+        'financial_type_id' => 1,
+        'receive_date' => '04/21/2015',
+        'receive_date_time' => '11:27PM',
+        'contact_id' => $this->_individualId,
+        'payment_instrument_id' => array_search('Credit Card', $this->paymentInstruments),
+        'contribution_status_id' => 1,
+        'credit_card_number' => 4444333322221111,
+        'cvv2' => 123,
+        'credit_card_exp_date' => array(
+          'M' => 9,
+          'Y' => 2025,
+        ),
+        'credit_card_type' => 'Visa',
+        'billing_first_name' => 'Junko',
+        'billing_middle_name' => '',
+        'billing_last_name' => 'Adams',
+        'billing_street_address-5' => '790L Lincoln St S',
+        'billing_city-5' => 'Maryknoll',
+        'billing_state_province_id-5' => 1031,
+        'billing_postal_code-5' => 10545,
+        'billing_country_id-5' => 1228,
+        'frequency_interval' => 1,
+        'frequency_unit' => 'month',
+        'installments' => '',
+        'hidden_AdditionalDetail' => 1,
+        'hidden_Premium' => 1,
+        'from_email_address' => '"civi45" <civi45@civicrm.com>',
+        'receipt_date' => '',
+        'receipt_date_time' => '',
+        'payment_processor_id' => $paymentProcessorID,
+        'currency' => 'USD',
+        'source' => '',
+      ), CRM_Core_Action::ADD);
+    }
+    catch (Civi\Payment\Exception\PaymentProcessorException $e) {
+      $this->assertEquals('Transaction cannot be processed. Please use a different payment card.',
+        $e->getMessage());
+    }
+    $this->callAPISuccessGetCount('Contribution', array(
+      'contact_id' => $this->_individualId,
+      'contribution_status_id' => 'Pending',
+    ), 1);
+  }
+
+  /**
+   * Test the submit function on the contribution page.
+   */
+  public function testSubmitCreditCardFee() {
+    $form = new CRM_Contribute_Form_Contribution();
+    print_r($this->paymentProcessor);
+    $this->paymentProcessor->setDoDirectPaymentResult(array('is_error' => 0, 'trxn_id' => 'tx', 'fee_amount' => .08));
+    $form->_mode = 'Live';
+    $form->testSubmit(array(
+      'total_amount' => 50,
+      'financial_type_id' => 1,
+      'receive_date' => '04/21/2015',
+      'receive_date_time' => '11:27PM',
+      'contact_id' => $this->_individualId,
+      'payment_instrument_id' => array_search('Credit Card', $this->paymentInstruments),
+      'contribution_status_id' => 1,
+      'credit_card_number' => 4444333322221111,
+      'cvv2' => 123,
+      'credit_card_exp_date' => array(
+        'M' => 9,
+        'Y' => 2025,
+      ),
+      'credit_card_type' => 'Visa',
+      'billing_first_name' => 'Junko',
+      'billing_middle_name' => '',
+      'billing_last_name' => 'Adams',
+      'billing_street_address-5' => '790L Lincoln St S',
+      'billing_city-5' => 'Maryknoll',
+      'billing_state_province_id-5' => 1031,
+      'billing_postal_code-5' => 10545,
+      'billing_country_id-5' => 1228,
+      'frequency_interval' => 1,
+      'frequency_unit' => 'month',
+      'installments' => '',
+      'hidden_AdditionalDetail' => 1,
+      'hidden_Premium' => 1,
+      'from_email_address' => '"civi45" <civi45@civicrm.com>',
+      'receipt_date' => '',
+      'receipt_date_time' => '',
+      'payment_processor_id' => $this->paymentProcessorID,
+      'currency' => 'USD',
+      'source' => '',
+    ), CRM_Core_Action::ADD);
+
+    $contribution = $this->callAPISuccessGetSingle('Contribution', array(
+      'contact_id' => $this->_individualId,
+      'contribution_status_id' => 'Completed',
+    ));
+    $this->assertEquals('50', $contribution['total_amount']);
+    $this->assertEquals(.08, $contribution['fee_amount']);
+    $this->assertEquals(49.92, $contribution['net_amount']);
+    $this->assertEquals('tx', $contribution['trxn_id']);
+    $this->assertEmpty($contribution['amount_level']);
+  }
+
+  /**
+   * Test a fully deductible contribution submitted by credit card (CRM-16669).
+   */
+  public function testSubmitCreditCardFullyDeductible() {
+    $form = new CRM_Contribute_Form_Contribution();
+    $form->_mode = 'Live';
+    $form->testSubmit(array(
+      'total_amount' => 50,
+      'financial_type_id' => 1,
+      'receive_date' => '04/21/2015',
+      'receive_date_time' => '11:27PM',
+      'contact_id' => $this->_individualId,
+      'payment_instrument_id' => array_search('Credit Card', $this->paymentInstruments),
+      'contribution_status_id' => 1,
+      'credit_card_number' => 4444333322221111,
+      'cvv2' => 123,
+      'credit_card_exp_date' => array(
+        'M' => 9,
+        'Y' => 2025,
+      ),
+      'credit_card_type' => 'Visa',
+      'billing_first_name' => 'Junko',
+      'billing_middle_name' => '',
+      'billing_last_name' => 'Adams',
+      'billing_street_address-5' => '790L Lincoln St S',
+      'billing_city-5' => 'Maryknoll',
+      'billing_state_province_id-5' => 1031,
+      'billing_postal_code-5' => 10545,
+      'billing_country_id-5' => 1228,
+      'frequency_interval' => 1,
+      'frequency_unit' => 'month',
+      'installments' => '',
+      'hidden_AdditionalDetail' => 1,
+      'hidden_Premium' => 1,
+      'from_email_address' => '"civi45" <civi45@civicrm.com>',
+      'receipt_date' => '',
+      'receipt_date_time' => '',
+      'payment_processor_id' => $this->paymentProcessorID,
+      'currency' => 'USD',
+      'source' => '',
+    ), CRM_Core_Action::ADD);
+
+    $contribution = $this->callAPISuccessGetSingle('Contribution', array(
+      'contact_id' => $this->_individualId,
+      'contribution_status_id' => 'Completed',
+    ));
+    $this->assertEquals('50', $contribution['total_amount']);
+    $this->assertEquals(0, $contribution['non_deductible_amount']);
   }
 
   /**
@@ -198,11 +366,12 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
         'receive_date_time' => '11:27PM',
         'contact_id' => $this->_individualId,
         'payment_instrument_id' => array_search('Credit Card', $this->paymentInstruments),
-        'payment_processor_id' => $this->paymentProcessor->id,
+        'payment_processor_id' => $this->paymentProcessorID,
         'credit_card_exp_date' => array('M' => 5, 'Y' => 2012),
         'credit_card_number' => '411111111111111',
       ), CRM_Core_Action::ADD,
-        'live');
+        'live'
+      );
     }
     catch (\Civi\Payment\Exception\PaymentProcessorException $e) {
       $this->callAPISuccessGetCount('Contribution', array(
@@ -223,6 +392,62 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
       return;
     }
     $this->fail('An expected exception has not been raised.');
+  }
+
+  /**
+   * Test the submit function creates a billing address if provided.
+   */
+  public function testSubmitCreditCardWithBillingAddress() {
+    $form = new CRM_Contribute_Form_Contribution();
+    $form->testSubmit(array(
+      'total_amount' => 50,
+      'financial_type_id' => 1,
+      'receive_date' => '04/21/2015',
+      'receive_date_time' => '11:27PM',
+      'contact_id' => $this->_individualId,
+      'payment_instrument_id' => array_search('Credit Card', $this->paymentInstruments),
+      'payment_processor_id' => $this->paymentProcessorID,
+      'credit_card_exp_date' => array('M' => 5, 'Y' => 2025),
+      'credit_card_number' => '411111111111111',
+      'billing_city-5' => 'Vancouver',
+    ), CRM_Core_Action::ADD,
+      'live'
+    );
+    $contribution = $this->callAPISuccessGetSingle('Contribution', array('return' => 'address_id'));
+    $this->assertNotEmpty($contribution['address_id']);
+    $this->callAPISuccessGetSingle('Address', array(
+      'city' => 'Vancouver',
+      'location_type_id' => 5,
+      'id' => $contribution['address_id'],
+    ));
+
+  }
+
+  /**
+   * Test the submit function does not create a billing address if no details provided.
+   */
+  public function testSubmitCreditCardWithNoBillingAddress() {
+    $form = new CRM_Contribute_Form_Contribution();
+    $form->testSubmit(array(
+      'total_amount' => 50,
+      'financial_type_id' => 1,
+      'receive_date' => '04/21/2015',
+      'receive_date_time' => '11:27PM',
+      'contact_id' => $this->_individualId,
+      'payment_instrument_id' => array_search('Credit Card', $this->paymentInstruments),
+      'payment_processor_id' => $this->paymentProcessorID,
+      'credit_card_exp_date' => array('M' => 5, 'Y' => 2025),
+      'credit_card_number' => '411111111111111',
+    ), CRM_Core_Action::ADD,
+      'live'
+    );
+    $contribution = $this->callAPISuccessGetSingle('Contribution', array('return' => 'address_id'));
+    $this->assertEmpty($contribution['address_id']);
+    $this->callAPISuccessGetCount('Address', array(
+      'city' => 'Vancouver',
+      'location_type_id' => 5,
+    ), 0);
+
   }
 
   /**
@@ -337,7 +562,7 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
       'fulfilled_date' => '',
       'is_email_receipt' => TRUE,
       'from_email_address' => 'test@test.com',
-      'payment_processor_id' => $this->paymentProcessor->id,
+      'payment_processor_id' => $this->paymentProcessorID,
       'credit_card_exp_date' => array('M' => 5, 'Y' => 2026),
       'credit_card_number' => '411111111111111',
     ), CRM_Core_Action::ADD,
@@ -396,6 +621,50 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
   }
 
   /**
+   * Test the submit function on the contribution page.
+   */
+  public function testSubmitUpdate() {
+    $form = new CRM_Contribute_Form_Contribution();
+
+    $form->testSubmit(array(
+        'total_amount' => 50,
+        'financial_type_id' => 1,
+        'receive_date' => '04/21/2015',
+        'receive_date_time' => '11:27PM',
+        'contact_id' => $this->_individualId,
+        'payment_instrument_id' => array_search('Check', $this->paymentInstruments),
+        'contribution_status_id' => 1,
+        'price_set_id' => 0,
+      ),
+      CRM_Core_Action::ADD);
+    $contribution = $this->callAPISuccessGetSingle('Contribution', array('contact_id' => $this->_individualId));
+    $form->testSubmit(array(
+      'total_amount' => 45,
+      'net_amount' => 45,
+      'financial_type_id' => 1,
+      'receive_date' => '04/21/2015',
+      'receive_date_time' => '11:27PM',
+      'contact_id' => $this->_individualId,
+      'payment_instrument_id' => array_search('Check', $this->paymentInstruments),
+      'contribution_status_id' => 1,
+      'price_set_id' => 0,
+      'id' => $contribution['id'],
+    ),
+      CRM_Core_Action::UPDATE);
+    $contribution = $this->callAPISuccessGetSingle('Contribution', array('contact_id' => $this->_individualId));
+    $this->assertEquals(45, (int) $contribution['total_amount']);
+
+    $financialTransactions = $this->callAPISuccess('FinancialTrxn', 'get', array('sequential' => TRUE));
+    $this->assertEquals(2, $financialTransactions['count']);
+    $this->assertEquals(50, $financialTransactions['values'][0]['total_amount']);
+    $this->assertEquals(-5, $financialTransactions['values'][1]['total_amount']);
+    $this->assertEquals(-5, $financialTransactions['values'][1]['net_amount']);
+    $lineItem = $this->callAPISuccessGetSingle('LineItem', array());
+    $this->assertEquals(45, $lineItem['line_total']);
+  }
+
+
+  /**
    * Get parameters for credit card submit calls.
    *
    * @return array
@@ -403,7 +672,7 @@ class CRM_Contribute_Form_ContributionTest extends CiviUnitTestCase {
    */
   protected function getCreditCardParams() {
     return array(
-      'payment_processor_id' => $this->paymentProcessor->id,
+      'payment_processor_id' => $this->paymentProcessorID,
       'credit_card_exp_date' => array('M' => 5, 'Y' => 2012),
       'credit_card_number' => '411111111111111',
     );

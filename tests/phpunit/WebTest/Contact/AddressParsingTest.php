@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -76,6 +76,7 @@ class WebTest_Contact_AddressParsingTest extends CiviSeleniumTestCase {
     $this->click("//div[@id='addMoreAddress1']/a/span");
     $this->waitForElementPresent("address_2_street_address");
     $this->type("address_2_street_address", "121 Sherman Street #15");
+    $this->waitForElementPresent("address_2_city");
     $this->type("address_2_city", "Birmingham");
     $this->type("address_2_postal_code", "3456");
     $this->select("address_2_state_province_id", "value=1002");
@@ -94,9 +95,10 @@ class WebTest_Contact_AddressParsingTest extends CiviSeleniumTestCase {
     $this->click("//div[@id='addMoreAddress3']/a/span");
     $this->waitForElementPresent("address_4_street_address");
     $this->type("address_4_street_address", "121 SW Sherman Way Suite 15");
+    $this->waitForElementPresent("address_4_city");
     $this->type("address_4_city", "Birmingham");
     $this->type("address_4_postal_code", "5491");
-    $this->assertSelected('address_4_country_id', "United States");
+    $this->assertSelected('address_4_country_id', "UNITED STATES");
     $this->select("address_4_state_province_id", "value=1002");
 
     // Store location type of each address

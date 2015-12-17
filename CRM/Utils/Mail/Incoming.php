@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Utils_Mail_Incoming {
   const
@@ -409,7 +407,15 @@ class CRM_Utils_Mail_Incoming {
 
   /**
    * Retrieve a contact ID and if not present.
-   * create one with this email
+   *
+   * Create one with this email
+   *
+   * @param string $email
+   * @param string $name
+   * @param bool $create
+   * @param string $mail
+   *
+   * @return int|null
    */
   public static function getContactID($email, $name = NULL, $create = TRUE, &$mail) {
     $dao = CRM_Contact_BAO_Contact::matchContactOnEmail($email, 'Individual');

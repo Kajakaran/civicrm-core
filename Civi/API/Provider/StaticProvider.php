@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -135,13 +135,7 @@ class StaticProvider extends AdhocProvider {
    * @throws \API_Exception
    */
   public function doGet($apiRequest) {
-    $id = @$apiRequest['params']['id'];
-    if ($id && isset($this->records[$id])) {
-      return civicrm_api3_create_success(array($id => $this->records[$id]));
-    }
-    else {
-      return civicrm_api3_create_success(array());
-    }
+    return _civicrm_api3_basic_array_get($apiRequest['entity'], $apiRequest['params'], $this->records, 'id', $this->fields);
   }
 
   /**

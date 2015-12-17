@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * This class is used to build address block
+ * This class is used to build address block.
  */
 class CRM_Contact_Form_Edit_Address {
 
@@ -48,9 +46,6 @@ class CRM_Contact_Form_Edit_Address {
    *   False, if we want to skip the address sharing features.
    * @param bool $inlineEdit
    *   True when edit used in inline edit.
-   *
-   * @return void
-   *
    */
   public static function buildQuickForm(&$form, $addressBlockCount = NULL, $sharing = TRUE, $inlineEdit = FALSE) {
     // passing this via the session is AWFUL. we need to fix this
@@ -73,7 +68,6 @@ class CRM_Contact_Form_Edit_Address {
 
     //make location type required for inline edit
     $form->addField("address[$blockId][location_type_id]", array('entity' => 'address', 'class' => 'eight') + $js, $inlineEdit);
-
     if (!$inlineEdit) {
       $js = array('id' => 'Address_' . $blockId . '_IsPrimary', 'onClick' => 'singleSelect( this.id );');
     }
@@ -91,8 +85,8 @@ class CRM_Contact_Form_Edit_Address {
     $form->addField(
       "address[$blockId][is_billing]", array(
         'entity' => 'address',
-        'label' => ts('Primary location for this contact'),
-        'text' => ts('Primary location for this contact')) + $js);
+        'label' => ts('Billing location for this contact'),
+        'text' => ts('Billing location for this contact')) + $js);
 
     // hidden element to store master address id
     $form->addField("address[$blockId][master_id]", array('entity' => 'address', 'type' => 'hidden'));
@@ -142,7 +136,13 @@ class CRM_Contact_Form_Edit_Address {
         $name = 'name';
       }
 
-      $form->addField("address[$blockId][$name]", array('entity' => 'address'));
+      $params = array('entity' => 'address');
+
+      if ($name == 'postal_code_suffix') {
+        $params['label'] = ts('Suffix');
+      }
+
+      $form->addField("address[$blockId][$name]", $params);
     }
 
     $entityId = NULL;
@@ -235,13 +235,12 @@ class CRM_Contact_Form_Edit_Address {
   /**
    * Check for correct state / country mapping.
    *
-   * @param $fields
-   * @param $files
-   * @param $self
+   * @param array $fields
+   * @param array $files
+   * @param CRM_Core_Form $self
    *
    * @return array|bool
    *   if no errors
-   *
    */
   public static function formRule($fields, $files, $self) {
     $errors = array();
@@ -297,7 +296,6 @@ class CRM_Contact_Form_Edit_Address {
    *   Defaults associated array.
    * @param CRM_Core_Form $form
    *   Form object.
-   *
    */
   public static function setDefaultValues(&$defaults, &$form) {
     $addressValues = array();
@@ -401,10 +399,11 @@ class CRM_Contact_Form_Edit_Address {
     }
   }
 
-
   /**
+   * Store required custom data info.
+   *
    * @param CRM_Core_Form $form
-   * @param $groupTree
+   * @param array $groupTree
    */
   public static function storeRequiredCustomDataInfo(&$form, $groupTree) {
     if (CRM_Utils_System::getClassName($form) == 'CRM_Contact_Form_Contact') {

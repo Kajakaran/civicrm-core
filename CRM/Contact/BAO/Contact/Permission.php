@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Contact_BAO_Contact_Permission {
 
@@ -87,8 +85,6 @@ WHERE contact_a.id = %1 AND $permission";
    * @param int|string $type the type of operation (view|edit)
    * @param bool $force
    *   Should we force a recompute.
-   *
-   * @return void
    */
   public static function cache($userID, $type = CRM_Core_Permission::VIEW, $force = FALSE) {
     static $_processed = array();
@@ -141,7 +137,6 @@ ON DUPLICATE KEY UPDATE
          operation=VALUES(operation)"
     );
 
-    CRM_Core_DAO::executeQuery('DELETE FROM civicrm_acl_contact_cache WHERE contact_id IN (SELECT id FROM civicrm_contact WHERE is_deleted = 1)');
     $_processed[$userID] = 1;
   }
 
@@ -230,7 +225,7 @@ AND    $operationClause LIMIT 1";
     }
     else {
       $fromClause = " INNER JOIN civicrm_acl_contact_cache aclContactCache ON {$contactAlias}.id = aclContactCache.contact_id ";
-      $whereClase = " aclContactCache.user_id = $contactID ";
+      $whereClase = " aclContactCache.user_id = $contactID AND $contactAlias.is_deleted = 0";
     }
 
     return array($fromClause, $whereClase);
@@ -257,7 +252,9 @@ AND    $operationClause LIMIT 1";
         return FALSE;
       }
     }
-    if ($contactID == $selectedContactID && CRM_Core_Permission::check('edit my contact')) {
+    if ($contactID == $selectedContactID &&
+      (CRM_Core_Permission::check('edit my contact') || CRM_Core_Permission::check('view my contact'))
+    ) {
       return TRUE;
     }
     else {

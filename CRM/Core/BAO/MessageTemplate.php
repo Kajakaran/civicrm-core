@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,14 +29,12 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 require_once 'Mail/mime.php';
 
 /**
- * Class CRM_Core_BAO_MessageTemplate
+ * Class CRM_Core_BAO_MessageTemplate.
  */
 class CRM_Core_BAO_MessageTemplate extends CRM_Core_DAO_MessageTemplate {
 
@@ -100,7 +98,6 @@ class CRM_Core_BAO_MessageTemplate extends CRM_Core_DAO_MessageTemplate {
    * Delete the Message Templates.
    *
    * @param int $messageTemplatesID
-   * @return void
    */
   public static function del($messageTemplatesID) {
     // make sure messageTemplatesID is an integer
@@ -127,6 +124,8 @@ class CRM_Core_BAO_MessageTemplate extends CRM_Core_DAO_MessageTemplate {
    *
    *
    * @param bool $all
+   *
+   * @param bool $isSMS
    *
    * @return object
    */
@@ -270,11 +269,9 @@ class CRM_Core_BAO_MessageTemplate extends CRM_Core_DAO_MessageTemplate {
   }
 
   /**
-   * Revert a message template to its default subject+text+HTML state
+   * Revert a message template to its default subject+text+HTML state.
    *
    * @param int $id id of the template
-   *
-   * @return void
    */
   public static function revert($id) {
     $diverted = new CRM_Core_BAO_MessageTemplate();
@@ -431,6 +428,11 @@ class CRM_Core_BAO_MessageTemplate extends CRM_Core_DAO_MessageTemplate {
           $returnProperties[$name] = 1;
         }
       }
+
+      // @todo CRM-17253 don't resolve contact details if there are no tokens
+      // effectively comment out this next (performance-expensive) line
+      // but unfortunately testing is a bit think on the ground to that needs to
+      // be added.
       list($contact) = CRM_Utils_Token::getTokenDetails($contactParams,
         $returnProperties,
         FALSE, FALSE, NULL,

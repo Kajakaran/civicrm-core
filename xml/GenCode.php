@@ -1,4 +1,5 @@
 <?php
+ini_set('display_errors', 1);
 ini_set('include_path', '.' . PATH_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'packages' . PATH_SEPARATOR . '..');
 // make sure the memory_limit is at least 512 MB
 $memLimitString = trim(ini_get('memory_limit'));
@@ -14,11 +15,13 @@ switch ($memLimitUnit) {
 }
 
 if ($memLimit >= 0 and $memLimit < 536870912) {
-  ini_set('memory_limit', '512M');
+  // Note: When processing all locales, CRM_Core_I18n::singleton() eats a lot of RAM.
+  ini_set('memory_limit', -1);
 }
 date_default_timezone_set('UTC'); // avoid php warnings if timezone is not set - CRM-10844
 
 define('CIVICRM_UF', 'Drupal');
+define('CIVICRM_UF_BASEURL', '/');
 
 require_once 'CRM/Core/ClassLoader.php';
 CRM_Core_ClassLoader::singleton()->register();

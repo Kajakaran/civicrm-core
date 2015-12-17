@@ -52,11 +52,10 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
     $this->_paymentProcessor = $paymentProcessor;
     $this->_processorName = ts('Authorize.net');
 
-    $config = CRM_Core_Config::singleton();
     $this->_setParam('apiLogin', $paymentProcessor['user_name']);
     $this->_setParam('paymentKey', $paymentProcessor['password']);
     $this->_setParam('paymentType', 'AIM');
-    $this->_setParam('md5Hash', $paymentProcessor['signature']);
+    $this->_setParam('md5Hash', CRM_Utils_Array::value('signature', $paymentProcessor));
 
     $this->_setParam('emailCustomer', 'TRUE');
     $this->_setParam('timestamp', time());
@@ -70,6 +69,22 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
    * @return bool
    */
   protected function supportsFutureRecurStartDate() {
+    return TRUE;
+  }
+
+  /**
+   * Can recurring contributions be set against pledges.
+   *
+   * In practice all processors that use the baseIPN function to finish transactions or
+   * call the completetransaction api support this by looking up previous contributions in the
+   * series and, if there is a prior contribution against a pledge, and the pledge is not complete,
+   * adding the new payment to the pledge.
+   *
+   * However, only enabling for processors it has been tested against.
+   *
+   * @return bool
+   */
+  protected function supportsRecurContributionsForPledges() {
     return TRUE;
   }
 
@@ -128,7 +143,7 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
     }
 
     // Authorize.Net will not refuse duplicates, so we should check if the user already submitted this transaction
-    if ($this->_checkDupe($authorizeNetFields['x_invoice_num'])) {
+    if ($this->checkDupe($authorizeNetFields['x_invoice_num'], CRM_Utils_Array::value('contributionID', $params))) {
       return self::error(9004, 'It appears that this transaction is a duplicate.  Have you already submitted the form once?  If so there may have been a connection problem.  Check your email for a receipt from Authorize.net.  If you do not receive a receipt within 2 hours you can try your transaction again.  If you continue to have problems please contact the site administrator.');
     }
 
@@ -141,7 +156,7 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
     curl_setopt($submit, CURLOPT_POST, TRUE);
     curl_setopt($submit, CURLOPT_RETURNTRANSFER, TRUE);
     curl_setopt($submit, CURLOPT_POSTFIELDS, implode('&', $postFields));
-    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL'));
+    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, Civi::settings()->get('verifySSL'));
 
     $response = curl_exec($submit);
 
@@ -300,7 +315,7 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
     curl_setopt($submit, CURLOPT_HEADER, 1);
     curl_setopt($submit, CURLOPT_POSTFIELDS, $arbXML);
     curl_setopt($submit, CURLOPT_POST, 1);
-    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL'));
+    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, Civi::settings()->get('verifySSL'));
 
     $response = curl_exec($submit);
 
@@ -371,21 +386,6 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
     }
 
     return $fields;
-  }
-
-  /**
-   * Checks to see if invoice_id already exists in db.
-   *
-   * @param int $invoiceId
-   *   The ID to check.
-   *
-   * @return bool
-   *   True if ID exists, else false
-   */
-  public function _checkDupe($invoiceId) {
-    $contribution = new CRM_Contribute_DAO_Contribution();
-    $contribution->invoice_id = $invoiceId;
-    return $contribution->find();
   }
 
   /**
@@ -538,6 +538,12 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
    *
    * Function is from Authorize.Net sample code, and used to avoid using
    * PHP5 XML functions
+   *
+   * @param string $haystack
+   * @param string $start
+   * @param string $end
+   *
+   * @return bool|string
    */
   public function _substring_between(&$haystack, $start, $end) {
     if (strpos($haystack, $start) === FALSE || strpos($haystack, $end) === FALSE) {
@@ -664,7 +670,7 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
     curl_setopt($submit, CURLOPT_HEADER, 1);
     curl_setopt($submit, CURLOPT_POSTFIELDS, $arbXML);
     curl_setopt($submit, CURLOPT_POST, 1);
-    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL'));
+    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, Civi::settings()->get('verifySSL'));
 
     $response = curl_exec($submit);
 
@@ -723,7 +729,7 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
     curl_setopt($submit, CURLOPT_HEADER, 1);
     curl_setopt($submit, CURLOPT_POSTFIELDS, $arbXML);
     curl_setopt($submit, CURLOPT_POST, 1);
-    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL'));
+    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, Civi::settings()->get('verifySSL'));
 
     $response = curl_exec($submit);
 
@@ -740,6 +746,14 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
       return self::error($responseFields['code'], $responseFields['text']);
     }
     return TRUE;
+  }
+
+  /**
+   * Process incoming notification.
+   */
+  static public function handlePaymentNotification() {
+    $ipnClass = new CRM_Core_Payment_AuthorizeNetIPN(array_merge($_GET, $_REQUEST));
+    $ipnClass->main();
   }
 
   /**
@@ -777,7 +791,7 @@ class CRM_Core_Payment_AuthorizeNet extends CRM_Core_Payment {
     curl_setopt($submit, CURLOPT_HEADER, 1);
     curl_setopt($submit, CURLOPT_POSTFIELDS, $arbXML);
     curl_setopt($submit, CURLOPT_POST, 1);
-    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL'));
+    curl_setopt($submit, CURLOPT_SSL_VERIFYPEER, Civi::settings()->get('verifySSL'));
 
     $response = curl_exec($submit);
 

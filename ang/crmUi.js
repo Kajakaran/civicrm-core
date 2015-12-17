@@ -1,7 +1,9 @@
 /// crmUi: Sundry UI helpers
 (function (angular, $, _) {
 
-  var uidCount = 0;
+  var uidCount = 0,
+    pageTitle = 'CiviCRM',
+    documentTitle = 'CiviCRM';
 
   angular.module('crmUi', [])
 
@@ -64,7 +66,7 @@
 
     // Simple wrapper around $.crmDatepicker.
     // example with no time input: <input crm-ui-datepicker="{time: false}" ng-model="myobj.datefield"/>
-    // example with custom date format: <input crm-ui-datepicker="{dateFormat: 'm/d/y'}" ng-model="myobj.datefield"/>
+    // example with custom date format: <input crm-ui-datepicker="{date: 'm/d/y'}" ng-model="myobj.datefield"/>
     .directive('crmUiDatepicker', function () {
       return {
         restrict: 'AE',
@@ -314,10 +316,12 @@
 
     // Display an HTML blurb inside an IFRAME.
     // example: <iframe crm-ui-iframe="getHtmlContent()"></iframe>
+    // example:  <iframe crm-ui-iframe crm-ui-iframe-src="getUrl()"></iframe>
     .directive('crmUiIframe', function ($parse) {
       return {
         scope: {
-          crmUiIframe: '@' // expression which evalutes to HTML content
+          crmUiIframeSrc: '@', // expression which evaluates to a URL
+          crmUiIframe: '@' // expression which evaluates to HTML content
         },
         link: function (scope, elm, attrs) {
           var iframe = $(elm)[0];
@@ -325,20 +329,24 @@
           iframe.setAttribute('frameborder', '0');
 
           var refresh = function () {
-            // var iframeHtml = '<html><head><base target="_blank"></head><body onload="parent.document.getElementById(\'' + iframe.id + '\').style.height=document.body.scrollHeight + \'px\'"><scr' + 'ipt type="text/javascript" src="https://gist.github.com/' + iframeId + '.js"></sc' + 'ript></body></html>';
-            var iframeHtml = scope.$parent.$eval(attrs.crmUiIframe);
-
-            var doc = iframe.document;
-            if (iframe.contentDocument) {
-              doc = iframe.contentDocument;
+            if (attrs.crmUiIframeSrc) {
+              iframe.setAttribute('src', scope.$parent.$eval(attrs.crmUiIframeSrc));
             }
-            else if (iframe.contentWindow) {
-              doc = iframe.contentWindow.document;
-            }
+            else {
+              var iframeHtml = scope.$parent.$eval(attrs.crmUiIframe);
 
-            doc.open();
-            doc.writeln(iframeHtml);
-            doc.close();
+              var doc = iframe.document;
+              if (iframe.contentDocument) {
+                doc = iframe.contentDocument;
+              }
+              else if (iframe.contentWindow) {
+                doc = iframe.contentWindow.document;
+              }
+
+              doc.open();
+              doc.writeln(iframeHtml);
+              doc.close();
+            }
           };
 
           // If the iframe is in a dialog, respond to resize events
@@ -387,14 +395,10 @@
             });
           }
 
-          $(elm).on('paste change keypress', function() {
-            scope.$apply(function() {
-              ngModel.$setViewValue(CRM.wysiwyg.getVal(elm));
-            });
-          });
-
           ngModel.$render = function(value) {
-            CRM.wysiwyg.setVal(elm, ngModel.$viewValue);
+            editor.done(function() {
+              CRM.wysiwyg.setVal(elm, ngModel.$viewValue || '');
+            });
           };
         }
       };
@@ -429,20 +433,20 @@
           var titleLocked = parse(attrs.titleLocked, ts('Locked'));
           var titleUnlocked = parse(attrs.titleUnlocked, ts('Unlocked'));
 
-          $(element).addClass('ui-icon lock-button');
+          $(element).addClass('crm-i lock-button');
           var refresh = function () {
             var locked = binding(scope);
             if (locked) {
               $(element)
-                .removeClass('ui-icon-unlocked')
-                .addClass('ui-icon-locked')
+                .removeClass('fa-unlock')
+                .addClass('fa-lock')
                 .prop('title', titleLocked(scope))
               ;
             }
             else {
               $(element)
-                .removeClass('ui-icon-locked')
-                .addClass('ui-icon-unlocked')
+                .removeClass('fa-lock')
+                .addClass('fa-unlock')
                 .prop('title', titleUnlocked(scope))
               ;
             }
@@ -584,7 +588,7 @@
               $timeout(function () {
                 // ex: msg_template_id adds new item then selects it; use $timeout to ensure that
                 // new item is added before selection is made
-                element.select2('val', ngModel.$viewValue);
+                element.select2('val', ngModel.$modelValue);
               });
             };
           }
@@ -599,7 +603,7 @@
 
           function init() {
             // TODO watch select2-options
-            element.select2(scope.crmUiSelect || {});
+            element.crmSelect2(scope.crmUiSelect || {});
             if (ngModel) {
               element.on('change', refreshModel);
               $timeout(ngModel.$render);
@@ -627,7 +631,7 @@
             $timeout(function () {
               // ex: msg_template_id adds new item then selects it; use $timeout to ensure that
               // new item is added before selection is made
-              element.select2('val', ngModel.$viewValue);
+              element.select2('val', ngModel.$modelValue);
             });
           };
           function refreshModel() {
@@ -651,7 +655,7 @@
       };
     })
 
-    // example <div crm-ui-tab crm-title="ts('My Title')">...content...</div>
+    // example <div crm-ui-tab id="tab-1" crm-title="ts('My Title')" count="3">...content...</div>
     // WISHLIST: use a full Angular component instead of an incomplete jQuery wrapper
     .directive('crmUiTab', function($parse) {
       return {
@@ -659,6 +663,8 @@
         restrict: 'EA',
         scope: {
           crmTitle: '@',
+          crmIcon: '@',
+          count: '@',
           id: '@'
         },
         template: '<div ng-transclude></div>',
@@ -837,13 +843,22 @@
       };
     })
 
-    // Example: <button crm-icon="check">Save</button>
+    // Example for Font Awesome: <button crm-icon="fa-check">Save</button>
+    // Example for jQuery UI (deprecated): <button crm-icon="check">Save</button>
     .directive('crmIcon', function() {
       return {
         restrict: 'EA',
-        scope: {},
         link: function (scope, element, attrs) {
-          $(element).prepend('<span class="icon ui-icon-' + attrs.crmIcon + '"></span> ');
+          if (element.is('[crm-ui-tab]')) {
+            // handled in crmUiTab ctrl
+            return;
+          }
+          if (attrs.crmIcon.substring(0,3) == 'fa-') {
+            $(element).prepend('<i class="crm-i ' + attrs.crmIcon + '"></i> ');
+          }
+          else {
+            $(element).prepend('<span class="icon ui-icon-' + attrs.crmIcon + '"></span> ');
+          }
           if ($(element).is('button')) {
             $(element).addClass('crm-button');
           }
@@ -962,6 +977,39 @@
         }
       };
     })
+
+    // Sets document title & page title; attempts to override CMS title markup for the latter
+    // WARNING: Use only once per route!
+    // Example (same title for both): <h1 crm-page-title>{{ts('Hello')}}</h1>
+    // Example (separate document title): <h1 crm-document-title="ts('Hello')" crm-page-title><i class="crm-i fa-flag"></i>{{ts('Hello')}}</h1>
+    .directive('crmPageTitle', function($timeout) {
+      return {
+        scope: {
+          crmDocumentTitle: '='
+        },
+        link: function(scope, $el, attrs) {
+          function update() {
+            $timeout(function() {
+              var newPageTitle = _.trim($el.html()),
+                newDocumentTitle = scope.crmDocumentTitle || $el.text();
+              document.title = $('title').text().replace(documentTitle, newDocumentTitle);
+              // If the CMS has already added title markup to the page, use it
+              $('h1').not('.crm-container h1').each(function() {
+                if (_.trim($(this).html()) === pageTitle) {
+                  $(this).html(newPageTitle);
+                  $el.hide();
+                }
+              });
+              pageTitle = newPageTitle;
+              documentTitle = newDocumentTitle;
+            });
+          }
+
+          scope.$watch(function() {return scope.crmDocumentTitle + $el.html();}, update);
+        }
+      };
+    })
+
     .run(function($rootScope, $location) {
       /// Example: <button ng-click="goto('home')">Go home!</button>
       $rootScope.goto = function(path) {

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -9,7 +9,7 @@
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,16 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * Files required
- */
-
-/**
- * This file is for activity search
+ * This file is for activity search.
  */
 class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
 
@@ -67,8 +62,6 @@ class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
    */
   protected $_prefix = "activity_";
 
-  protected $_defaults;
-
   /**
    * The saved search ID retrieved from the GET vars.
    *
@@ -78,8 +71,6 @@ class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
 
   /**
    * Processing needed for buildForm and later.
-   *
-   * @return void
    */
   public function preProcess() {
     $this->set('searchFormName', 'Search');
@@ -159,13 +150,10 @@ class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
 
   /**
    * Build the form object.
-   *
-   *
-   * @return void
    */
   public function buildQuickForm() {
     parent::buildQuickForm();
-    $this->addElement('text', 'sort_name', ts('Name or Email'), CRM_Core_DAO::getAttribute('CRM_Contact_DAO_Contact', 'sort_name'));
+    $this->addSortNameField();
 
     CRM_Activity_BAO_Query::buildSearchForm($this);
 
@@ -204,21 +192,13 @@ class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
 
     if (!empty($_POST)) {
       $this->_formValues = $this->controller->exportValues($this->_name);
-      foreach (array('activity_type_id', 'status_id', 'activity_subject') as $element) {
-        $value = CRM_Utils_Array::value($element, $this->_formValues);
-        if ($value) {
-          if (is_array($value)) {
-            if ($element == 'status_id') {
-              unset($this->_formValues[$element]);
-              $element = 'activity_' . $element;
-            }
-            $this->_formValues[$element] = array('IN' => $value);
-          }
-          else {
-            $this->_formValues[$element] = array('LIKE' => "%$value%");
-          }
-        }
-      }
+      $specialParams = array(
+        'activity_type_id',
+        'status_id',
+        'activity_subject',
+      );
+      $changeNames = array('status_id' => 'activity_status_id');
+      CRM_Contact_BAO_Query::processSpecialFormValue($this->_formValues, $specialParams, $changeNames);
     }
 
     $this->fixFormValues();
@@ -233,7 +213,7 @@ class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
       $this->_formValues["activity_test"] = 0;
     }
 
-    CRM_Core_BAO_CustomValue::fixFieldValueOfTypeMemo($this->_formValues);
+    CRM_Core_BAO_CustomValue::fixCustomFieldValue($this->_formValues);
 
     $this->_queryParams = CRM_Contact_BAO_Query::convertFormValues($this->_formValues);
 
@@ -297,8 +277,8 @@ class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
 
     $status = CRM_Utils_Request::retrieve('status', 'String', $this);
     if ($status) {
-      $this->_formValues['activity_status'] = $status;
-      $this->_defaults['activity_status'] = $status;
+      $this->_formValues['activity_status_id'] = $status;
+      $this->_defaults['activity_status_id'] = $status;
     }
 
     $survey = CRM_Utils_Request::retrieve('survey', 'Positive', CRM_Core_DAO::$_nullObject);
@@ -339,7 +319,6 @@ class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
     );
 
     if ($signupType) {
-      //$this->_formValues['activity_type_id'] = array();
       $this->_formValues['activity_role'] = 1;
       $this->_defaults['activity_role'] = 1;
       $activityTypes = CRM_Core_PseudoConstant::activityType(TRUE, FALSE, FALSE, 'name');
@@ -390,6 +369,22 @@ class CRM_Activity_Form_Search extends CRM_Core_Form_Search {
       $this->_defaults['activity_date_relative'] = 0;
       $this->_formValues['activity_date_high'] = $dateHigh;
       $this->_defaults['activity_date_high'] = $dateHigh;
+    }
+
+    // Enable search activity by custom value
+    $requestParams = CRM_Utils_Request::exportValues();
+    foreach (array_keys($requestParams) as $key) {
+      if (substr($key, 0, 7) != 'custom_') {
+        continue;
+      }
+      elseif (empty($requestParams[$key])) {
+        continue;
+      }
+      $customValue = CRM_Utils_Request::retrieve($key, 'String', $this);
+      if ($customValue) {
+        $this->_formValues[$key] = $customValue;
+        $this->_defaults[$key] = $customValue;
+      }
     }
 
     if (!empty($this->_defaults)) {

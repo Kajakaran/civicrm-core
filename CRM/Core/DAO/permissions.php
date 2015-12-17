@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -95,6 +95,16 @@ function _civicrm_api3_permissions($entity, $action, &$params) {
     ),
   );
 
+  // CRM-16963 - Permissions for country.
+  $permissions['country'] = array(
+    'get' => array(
+      'access CiviCRM',
+    ),
+    'default' => array(
+      'administer CiviCRM',
+    ),
+  );
+
   // Contact-related data permissions.
   // CRM-14094 - Users can edit and delete contact-related objects using inline edit with 'edit all contacts' permission
   $permissions['address'] = array(
@@ -131,7 +141,7 @@ function _civicrm_api3_permissions($entity, $action, &$params) {
     ),
     'delete' => array(
       'access CiviCRM',
-      'delete contacts',
+      'edit all contacts',
     ),
     'default' => array(
       'access CiviCRM',
@@ -166,6 +176,15 @@ function _civicrm_api3_permissions($entity, $action, &$params) {
       'access all cases and activities',
     ),
   );
+
+  // Campaign permissions
+  $permissions['campaign'] = array(
+    'get' => array('access CiviCRM'),
+    'create' => array(array('administer CiviCampaign', 'manage campaign')),
+    'update' => array(array('administer CiviCampaign', 'manage campaign')),
+    'delete' => array(array('administer CiviCampaign', 'manage campaign')),
+  );
+  $permissions['survey'] = $permissions['campaign'];
 
   // Financial permissions
   $permissions['contribution'] = array(
@@ -431,6 +450,17 @@ function _civicrm_api3_permissions($entity, $action, &$params) {
       'edit pledges',
     ),
   );
+
+  //CRM-16777: Disable schedule reminder for user that have 'edit all events' and 'administer CiviCRM' permission.
+  $permissions['action_schedule'] = array(
+    'update' => array(
+      array(
+        'access CiviCRM',
+        'edit all events',
+      ),
+    ),
+  );
+
   $permissions['pledge_payment'] = array(
     'create' => array(
       'access CiviCRM',
@@ -466,13 +496,40 @@ function _civicrm_api3_permissions($entity, $action, &$params) {
   );
 
   $permissions['uf_group'] = array(
+    'create' => array(
+      'access CiviCRM',
+      array(
+        'administer CiviCRM',
+        'manage event profiles',
+      ),
+    ),
     'get' => array(
       'access CiviCRM',
     ),
+    'update' => array(
+      'access CiviCRM',
+      array(
+        'administer CiviCRM',
+        'manage event profiles',
+      ),
+    ),
   );
-  $permissions['uf_field'] = $permissions['uf_group'];
+  $permissions['uf_field'] = $permissions['uf_join'] = $permissions['uf_group'];
+  $permissions['uf_field']['delete'] = array(
+    'access CiviCRM',
+    array(
+      'administer CiviCRM',
+      'manage event profiles',
+    ),
+  );
   $permissions['option_value'] = $permissions['uf_group'];
   $permissions['option_group'] = $permissions['option_value'];
+
+  $permissions['message_template'] = array(
+    'get' => array('access CiviCRM'),
+    'create' => array('edit message templates'),
+    'update' => array('edit message templates'),
+  );
 
   // Translate 'create' action to 'update' if id is set
   if ($action == 'create' && (!empty($params['id']) || !empty($params[$entity . '_id']))) {

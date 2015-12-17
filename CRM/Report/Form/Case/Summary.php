@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -37,6 +37,8 @@ class CRM_Report_Form_Case_Summary extends CRM_Report_Form {
   protected $_summary = NULL;
   protected $_relField = FALSE;
   protected $_exposeContactID = FALSE;
+
+  protected $_customGroupExtends = array('Case');
 
   /**
    */
@@ -291,8 +293,13 @@ inner join civicrm_contact $c2 on ${c2}.id=${ccc}.contact_id
             if ($fieldName == 'case_type_id') {
               $value = CRM_Utils_Array::value("{$fieldName}_value", $this->_params);
               if (!empty($value)) {
-                $clause = "( {$field['dbAlias']} REGEXP '[[:<:]]" .
-                  implode('[[:>:]]|[[:<:]]', $value) . "[[:>:]]' )";
+                $operator = '';
+                if ($op == 'notin') {
+                  $operator = 'NOT';
+                }
+
+                $regexp = "[[:cntrl:]]*" . implode('[[:>:]]*|[[:<:]]*', $value) . "[[:cntrl:]]*";
+                $clause = "{$field['dbAlias']} {$operator} REGEXP '{$regexp}'";
               }
               $op = NULL;
             }
@@ -323,7 +330,7 @@ inner join civicrm_contact $c2 on ${c2}.id=${ccc}.contact_id
   }
 
   public function groupBy() {
-    $this->_groupBy = "";
+    $this->_groupBy = "GROUP BY {$this->_aliases['civicrm_c2']}.id";
   }
 
   public function postProcess() {

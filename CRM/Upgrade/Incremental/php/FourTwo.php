@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -9,7 +9,7 @@
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -25,25 +26,11 @@
  */
 
 /**
- *
- * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
+ * Upgrade logic for 4.2
  */
-class CRM_Upgrade_Incremental_php_FourTwo {
-  const BATCH_SIZE = 5000;
+class CRM_Upgrade_Incremental_php_FourTwo extends CRM_Upgrade_Incremental_Base {
   const SETTINGS_SNIPPET_PATTERN = '/CRM_Core_ClassLoader::singleton\(\)-\>register/';
   const SETTINGS_SNIPPET = "\nrequire_once 'CRM/Core/ClassLoader.php';\nCRM_Core_ClassLoader::singleton()->register();\n";
-
-  /**
-   * @param $errors
-   *
-   * @return bool
-   */
-  public function verifyPreDBstate(&$errors) {
-    return TRUE;
-  }
 
   /**
    * Compute any messages which should be displayed beforeupgrade.
@@ -51,18 +38,18 @@ class CRM_Upgrade_Incremental_php_FourTwo {
    * Note: This function is called iteratively for each upcoming
    * revision to the database.
    *
-   * @param $preUpgradeMessage
+   * @param string $preUpgradeMessage
    * @param string $rev
    *   a version number, e.g. '4.2.alpha1', '4.2.beta3', '4.2.0'.
    * @param null $currentVer
    *
-   * @return void
+   * @return bool
    */
   public function setPreUpgradeMessage(&$preUpgradeMessage, $rev, $currentVer = NULL) {
     if ($rev == '4.2.alpha1') {
       $tables = array('civicrm_contribution_page', 'civicrm_event', 'civicrm_group', 'civicrm_contact');
       if (!CRM_Core_DAO::schemaRequiresRebuilding($tables)) {
-        $errors = ts("The upgrade has identified some schema integrity issues in the database. It seems some of your constraints are missing. You will have to rebuild your schema before re-trying the upgrade. Please refer to %1.", array(1 => CRM_Utils_System::docURL2("Ensuring Schema Integrity on Upgrades", FALSE, "Ensuring Schema Integrity on Upgrades", NULL, NULL, "wiki")));
+        $errors = "The upgrade has identified some schema integrity issues in the database. It seems some of your constraints are missing. You will have to rebuild your schema before re-trying the upgrade. Please refer to " . CRM_Utils_System::docURL2("Ensuring Schema Integrity on Upgrades", FALSE, "Ensuring Schema Integrity on Upgrades", NULL, NULL, "wiki");
         CRM_Core_Error::fatal($errors);
         return FALSE;
       }
@@ -81,8 +68,7 @@ INNER JOIN civicrm_membership mem ON mem.id = mp.membership_id
 ORDER BY mp.contribution_id, mp.membership_id";
       $invalidData = CRM_Core_DAO::executeQuery($query);
       if ($invalidData->N) {
-        $invalidDataMessage = "<br /><strong>" . ts('The upgrade is being aborted due to data integrity issues in your database. There are multiple membership records linked to the same contribution record. This is unexpected, and some of the membership records may be duplicates. The problem record sets are listed below. Refer to <a href="%1">this wiki page for instructions on repairing your database</a> so that you can run the upgrade successfully.
-        ', array(1 => 'http://wiki.civicrm.org/confluence/display/CRMDOC42/Repair+database+script+for+4.2+upgrades')) . "</strong>";
+        $invalidDataMessage = "<br /><strong>" . 'The upgrade is being aborted due to data integrity issues in your database. There are multiple membership records linked to the same contribution record. This is unexpected, and some of the membership records may be duplicates. The problem record sets are listed below. Refer to <a href="http://wiki.civicrm.org/confluence/display/CRMDOC42/Repair+database+script+for+4.2+upgrades">this wiki page for instructions on repairing your database</a> so that you can run the upgrade successfully.' . "</strong>";
         $membershipType = CRM_Member_PseudoConstant::membershipType();
         $membershipStatus = CRM_Member_PseudoConstant::membershipStatus();
         $invalidDataMessage .= "<table border=1><tr><th>Contact-ID</th><th>Contribution-ID</th><th>Membership-ID</th><th>Membership Type</th><th>Start Date</th><th>End Date</th><th>Membership Status</th></tr>";
@@ -97,7 +83,8 @@ ORDER BY mp.contribution_id, mp.membership_id";
           $invalidDataMessage .= "<td>" . CRM_Utils_Array::value($invalidData->status_id, $membershipStatus) . "</td>";
           $invalidDataMessage .= "</tr>";
         }
-        $invalidDataMessage .= "</table><p>" . ts('If you have reviewed the cleanup script documentation on the wiki and you are ready to run the cleanup now - <a href="%1">click here</a>.', array(1 => CRM_Utils_System::url('civicrm/upgrade/cleanup425', 'reset=1'))) . "</p>";
+        $clickHere = CRM_Utils_System::url('civicrm/upgrade/cleanup425', 'reset=1');
+        $invalidDataMessage .= "</table><p>If you have reviewed the cleanup script documentation on the wiki and you are ready to run the cleanup now - <a href='$clickHere'>click here</a>.</p>";
         CRM_Core_Error::fatal($invalidDataMessage);
         return FALSE;
       }
@@ -129,7 +116,7 @@ INNER JOIN civicrm_price_field cpf ON cpf.id = cpfv.price_field_id and cpf.id !=
 INNER JOIN civicrm_price_set cps ON cps.id = cpf.price_set_id AND cps.name <>'default_membership_type_amount' ";
       $dao = CRM_Core_DAO::executeQuery($query);
       if ($dao->N) {
-        $preUpgradeMessage .= "<br /><strong>" . ts('We have identified extraneous data in your database that a previous upgrade likely introduced. We STRONGLY recommend making a backup of your site before continuing. We also STRONGLY suggest fixing this issue with unneeded records BEFORE you upgrade. You can find more information about this issue and the way to fix it by visiting <a href="http://forum.civicrm.org/index.php/topic,26181.0.html">http://forum.civicrm.org/index.php/topic,26181.0.html</a>.') . "</strong>";
+        $preUpgradeMessage .= "<br /><strong>We have identified extraneous data in your database that a previous upgrade likely introduced. We STRONGLY recommend making a backup of your site before continuing. We also STRONGLY suggest fixing this issue with unneeded records BEFORE you upgrade. You can find more information about this issue and the way to fix it by visiting <a href='http://forum.civicrm.org/index.php/topic,26181.0.html'>http://forum.civicrm.org/index.php/topic,26181.0.html</a>.</strong>";
       }
     }
 
@@ -138,7 +125,7 @@ INNER JOIN civicrm_price_set cps ON cps.id = cpf.price_set_id AND cps.name <>'de
       $sql = "SELECT id FROM civicrm_option_group WHERE name LIKE 'civicrm_price_field.amount.%' LIMIT 1";
       $dao = CRM_Core_DAO::executeQuery($sql);
       if ($dao->fetch()) {
-        $errors = ts("We found unexpected data values from an older version of CiviCRM in your database. The upgrade can not be run until this condition is corrected.<br /><br />Details: One or more rows are present in the civicrm_option_group with name like 'civicrm_price_field.amount.%'. <a href='%1'>Check here for information on diagnosing and correcting this problem.</a>", array(1 => 'http://forum.civicrm.org/index.php/topic,27744.msg118748.html#msg118748'));
+        $errors = "We found unexpected data values from an older version of CiviCRM in your database. The upgrade can not be run until this condition is corrected.<br /><br />Details: One or more rows are present in the civicrm_option_group with name like 'civicrm_price_field.amount.%'. <a href='http://forum.civicrm.org/index.php/topic,27744.msg118748.html#msg118748'>Check here for information on diagnosing and correcting this problem.</a>";
         CRM_Core_Error::fatal($errors);
         return FALSE;
       }
@@ -152,7 +139,6 @@ INNER JOIN civicrm_price_set cps ON cps.id = cpf.price_set_id AND cps.name <>'de
    *   alterable.
    * @param string $rev
    *   an intermediate version; note that setPostUpgradeMessage is called repeatedly with different $revs.
-   * @return void
    */
   public function setPostUpgradeMessage(&$postUpgradeMessage, $rev) {
     if ($rev == '4.2.beta5') {
@@ -210,10 +196,10 @@ INNER JOIN civicrm_price_set cps ON cps.id = cpf.price_set_id AND cps.name <>'de
 
     // Some steps take a long time, so we break them up into separate
     // tasks and enqueue them separately.
-    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.alpha1')), 'task_4_2_x_runSql', $rev);
-    $this->addTask(ts('Upgrade DB to 4.2.alpha1: Price Sets'), 'task_4_2_alpha1_createPriceSets', $rev);
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.alpha1')), 'runSql', $rev);
+    $this->addTask('Upgrade DB to 4.2.alpha1: Price Sets', 'task_4_2_alpha1_createPriceSets', $rev);
     self::convertContribution();
-    $this->addTask(ts('Upgrade DB to 4.2.alpha1: Event Profile'), 'task_4_2_alpha1_eventProfile');
+    $this->addTask('Upgrade DB to 4.2.alpha1: Event Profile', 'task_4_2_alpha1_eventProfile');
   }
 
   /**
@@ -234,13 +220,13 @@ INNER JOIN civicrm_price_set cps ON cps.id = cpf.price_set_id AND cps.name <>'de
    * @param $rev
    */
   public function upgrade_4_2_beta3($rev) {
-    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.beta3')), 'task_4_2_x_runSql', $rev);
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.beta3')), 'runSql', $rev);
     $minParticipantId = CRM_Core_DAO::singleValueQuery('SELECT coalesce(min(id),0) FROM civicrm_participant');
     $maxParticipantId = CRM_Core_DAO::singleValueQuery('SELECT coalesce(max(id),0) FROM civicrm_participant');
 
     for ($startId = $minParticipantId; $startId <= $maxParticipantId; $startId += self::BATCH_SIZE) {
       $endId = $startId + self::BATCH_SIZE - 1;
-      $title = ts('Upgrade DB to 4.2.alpha1: Participant (%1 => %2)', array(1 => $startId, 2 => $endId));
+      $title = "Upgrade DB to 4.2.alpha1: Participant ($startId => $endId)";
       $this->addTask($title, 'task_4_2_alpha1_convertParticipants', $startId, $endId);
     }
   }
@@ -261,14 +247,14 @@ INNER JOIN civicrm_price_set cps ON cps.id = cpf.price_set_id AND cps.name <>'de
    * @param $rev
    */
   public function upgrade_4_2_0($rev) {
-    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.0')), 'task_4_2_x_runSql', $rev);
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.0')), 'runSql', $rev);
   }
 
   /**
    * @param $rev
    */
   public function upgrade_4_2_2($rev) {
-    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.2')), 'task_4_2_x_runSql', $rev);
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.2')), 'runSql', $rev);
     //create line items for memberships and participants for api/import
     self::convertContribution();
 
@@ -308,7 +294,7 @@ INNER JOIN civicrm_price_set cps ON cps.id = cpf.price_set_id AND cps.name <>'de
    * @param $rev
    */
   public function upgrade_4_2_3($rev) {
-    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.3')), 'task_4_2_x_runSql', $rev);
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.3')), 'runSql', $rev);
     // CRM-10953 Remove duplicate activity type for 'Reminder Sent' which is mistakenly inserted by 4.2.alpha1 upgrade script
     $queryMin = "
 SELECT coalesce(min(value),0) from civicrm_option_value ov
@@ -350,7 +336,7 @@ DELETE from civicrm_option_value
    * @param $rev
    */
   public function upgrade_4_2_5($rev) {
-    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.5')), 'task_4_2_x_runSql', $rev);
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => '4.2.5')), 'runSql', $rev);
     //CRM-11077
     $sql = " SELECT cpse.entity_id, cpse.price_set_id
 FROM `civicrm_price_set_entity` cpse
@@ -374,7 +360,7 @@ HAVING COUNT(cpse.price_set_id) > 1 AND MIN(cpse1.id) <> cpse.id ";
     $maxContributionId = CRM_Core_DAO::singleValueQuery('SELECT coalesce(max(id),0) FROM civicrm_contribution');
     for ($startId = $minContributionId; $startId <= $maxContributionId; $startId += self::BATCH_SIZE) {
       $endId = $startId + self::BATCH_SIZE - 1;
-      $title = ts('Upgrade DB to 4.2.alpha1: Contributions (%1 => %2)', array(1 => $startId, 2 => $endId));
+      $title = "Upgrade DB to 4.2.alpha1: Contributions ($startId => $endId)";
       $this->addTask($title, 'task_4_2_alpha1_convertContributions', $startId, $endId);
     }
     $minParticipantId = CRM_Core_DAO::singleValueQuery('SELECT coalesce(min(id),0) FROM civicrm_participant');
@@ -382,7 +368,7 @@ HAVING COUNT(cpse.price_set_id) > 1 AND MIN(cpse1.id) <> cpse.id ";
 
     for ($startId = $minParticipantId; $startId <= $maxParticipantId; $startId += self::BATCH_SIZE) {
       $endId = $startId + self::BATCH_SIZE - 1;
-      $title = ts('Upgrade DB to 4.2.alpha1: Participant (%1 => %2)', array(1 => $startId, 2 => $endId));
+      $title = "Upgrade DB to 4.2.alpha1: Participant ($startId => $endId)";
       $this->addTask($title, 'task_4_2_alpha1_convertParticipants', $startId, $endId);
     }
   }
@@ -391,6 +377,11 @@ HAVING COUNT(cpse.price_set_id) > 1 AND MIN(cpse1.id) <> cpse.id ";
    * (Queue Task Callback)
    *
    * Upgrade code to create priceset for contribution pages and events
+   *
+   * @param \CRM_Queue_TaskContext $ctx
+   * @param string $rev
+   *
+   * @return bool
    */
   public static function task_4_2_alpha1_createPriceSets(CRM_Queue_TaskContext $ctx, $rev) {
     $upgrade = new CRM_Upgrade_Form();
@@ -442,22 +433,11 @@ WHERE     cpse.price_set_id IS NULL";
   }
 
   /**
-   * (Queue Task Callback)
-   */
-  public static function task_4_2_x_runSql(CRM_Queue_TaskContext $ctx, $rev) {
-    $upgrade = new CRM_Upgrade_Form();
-    $upgrade->processSQL($rev);
-
-    // now rebuild all the triggers
-    // CRM-9716
-    // FIXME // CRM_Core_DAO::triggerRebuild();
-
-    return TRUE;
-  }
-
-  /**
+   * Create price sets.
    *
-   * create price sets
+   * @param string $daoName
+   * @param string $addTo
+   * @param array $options
    */
   public static function createPriceSet($daoName, $addTo, $options = array()) {
     $query = "SELECT title FROM {$addTo[0]} where id =%1";
@@ -809,6 +789,10 @@ AND       cli.entity_id IS NULL AND cp.fee_amount IS NOT NULL";
    * (Queue Task Callback)
    *
    * Create an event registration profile with a single email field CRM-9587
+   *
+   * @param \CRM_Queue_TaskContext $ctx
+   *
+   * @return bool
    */
   public static function task_4_2_alpha1_eventProfile(CRM_Queue_TaskContext $ctx) {
     $upgrade = new CRM_Upgrade_Form();
@@ -877,30 +861,6 @@ VALUES
       CRM_Core_DAO::executeQuery($sql);
     }
     return TRUE;
-  }
-
-  /**
-   * Syntatic sugar for adding a task which (a) is in this class and (b) has
-   * a high priority.
-   *
-   * After passing the $funcName, you can also pass parameters that will go to
-   * the function. Note that all params must be serializable.
-   */
-  protected function addTask($title, $funcName) {
-    $queue = CRM_Queue_Service::singleton()->load(array(
-      'type' => 'Sql',
-      'name' => CRM_Upgrade_Form::QUEUE_NAME,
-    ));
-
-    $args = func_get_args();
-    $title = array_shift($args);
-    $funcName = array_shift($args);
-    $task = new CRM_Queue_Task(
-      array(get_class($this), $funcName),
-      $args,
-      $title
-    );
-    $queue->createItem($task, array('weight' => -1));
   }
 
   /**

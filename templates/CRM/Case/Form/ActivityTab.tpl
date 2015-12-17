@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,11 +25,13 @@
 *}
 {*this template is used for activity accordion*}
 {assign var=caseid value=$caseID}
-<div class="crm-accordion-wrapper crm-case_activities-accordion  crm-case-activities-block">
-  <div class="crm-accordion-header">
-    {ts}Activities{/ts}
-  </div>
-  <div id="activities" class="crm-accordion-body">
+{if isset($isForm) and $isForm}
+  <div class="crm-accordion-wrapper crm-case_activities-accordion  crm-case-activities-block">
+    <div class="crm-accordion-header">
+      {ts}Activities{/ts}
+    </div>
+
+    <div id="activities" class="crm-accordion-body">
     <div class="crm-accordion-wrapper crm-accordion-inner crm-search_filters-accordion collapsed">
       <div class="crm-accordion-header">
         {ts}Search Filters{/ts}
@@ -70,6 +72,7 @@
         </table>
       </div><!-- /.crm-accordion-body -->
     </div><!-- /.crm-accordion-wrapper -->
+{/if}
 
     <table id="case_id_{$caseid}"  class="nestedActivitySelector crm-ajax-table" data-order='[[0,"desc"]]' data-page-length="10">
       <thead><tr>
@@ -89,13 +92,13 @@
         var caseId = {/literal}{$caseID}{literal};
         CRM.$('table#case_id_' + caseId).data({
           "ajax": {
-            "url": {/literal}'{crmURL p="civicrm/ajax/activity" h=0 q="snippet=4&caseID=$caseId&cid=$contactID&userID=$userID"}'{literal},
+            "url": {/literal}'{crmURL p="civicrm/ajax/activity" h=0 q="snippet=4&caseID=$caseID&cid=$contactID&userID=$userID"}'{literal},
             "data": function (d) {
               d.status_id = $("select#status_id_" + caseId).val(),
               d.reporter_id = $("select#reporter_id_" + caseId).val(),
               d.activity_type_id = $("select#activity_type_filter_id_" + caseId).val(),
               d.activity_date_low = $("#activity_date_low_" + caseId).val(),
-              d.activity_date_high = $("#activity_date_high_" + caseId).val()
+              d.activity_date_high = $("#activity_date_high_" + caseId).val(),
               d.activity_deleted = ($("#activity_deleted_1").prop('checked')) ? 1 : 0; 
             }
           }
@@ -109,5 +112,7 @@
     </script>
   {/literal}
 
-  </div><!-- /.crm-accordion-body -->
-</div><!-- /.crm-accordion-wrapper -->
+{if isset($isForm) and $isForm}
+    </div><!-- /.crm-accordion-body -->
+  </div><!-- /.crm-accordion-wrapper -->
+{/if}

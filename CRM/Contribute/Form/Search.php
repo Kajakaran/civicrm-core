@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,16 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * Files required
- */
-
-/**
- * advanced search, extends basic search
+ * Advanced search, extends basic search.
  */
 class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
 
@@ -63,8 +57,6 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
    */
   protected $_limit = NULL;
 
-  protected $_defaults;
-
   /**
    * Prefix for the controller.
    */
@@ -72,19 +64,15 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
 
   /**
    * Processing needed for buildForm and later.
-   *
-   * @return void
    */
   public function preProcess() {
     $this->set('searchFormName', 'Search');
 
-    /**
-     * set the button names
-     */
     $this->_searchButtonName = $this->getButtonName('refresh');
     $this->_actionButtonName = $this->getButtonName('next', 'action');
 
     $this->_done = FALSE;
+    // @todo - is this an error - $this->_defaults is used.
     $this->defaults = array();
 
     /*
@@ -130,7 +118,7 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
       );
     }
 
-    $this->_queryParams = CRM_Contact_BAO_Query::convertFormValues($this->_formValues, 1);
+    $this->_queryParams = CRM_Contact_BAO_Query::convertFormValues($this->_formValues);
     $selector = new CRM_Contribute_Selector_Search($this->_queryParams,
       $this->_action,
       NULL,
@@ -161,6 +149,11 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
     $this->assign('contributionSummary', $this->get('summary'));
   }
 
+  /**
+   * Set defaults.
+   *
+   * @return array
+   */
   public function setDefaultValues() {
     if (empty($this->_defaults['contribution_status'])) {
       $this->_defaults['contribution_status'][1] = 1;
@@ -170,20 +163,10 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
 
   /**
    * Build the form object.
-   *
-   *
-   * @return void
    */
   public function buildQuickForm() {
     parent::buildQuickForm();
-    // text for sort_name
-    $this->addElement('text',
-      'sort_name',
-      ts('Contributor Name or Email'),
-      CRM_Core_DAO::getAttribute('CRM_Contact_DAO_Contact',
-        'sort_name'
-      )
-    );
+    $this->addSortNameField();
 
     $this->_group = CRM_Core_PseudoConstant::nestedGroup();
 
@@ -225,20 +208,38 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
   }
 
   /**
+   * Get the label for the sortName field if email searching is on.
+   *
+   * (email searching is a setting under search preferences).
+   *
+   * @return string
+   */
+  protected function getSortNameLabelWithEmail() {
+    return ts('Contributor Name or Email');
+  }
+
+  /**
+   * Get the label for the sortName field if email searching is off.
+   *
+   * (email searching is a setting under search preferences).
+   *
+   * @return string
+   */
+  protected function getSortNameLabelWithOutEmail() {
+    return ts('Contributor Name');
+  }
+
+  /**
    * The post processing of the form gets done here.
    *
    * Key things done during post processing are
-   *      - check for reset or next request. if present, skip post procesing.
+   *      - check for reset or next request. if present, skip post processing.
    *      - now check if user requested running a saved search, if so, then
    *        the form values associated with the saved search are used for searching.
-   *      - if user has done a submit with new values the regular post submissing is
+   *      - if user has done a submit with new values the regular post submission is
    *        done.
    * The processing consists of using a Selector / Controller framework for getting the
    * search results.
-   *
-   * @param
-   *
-   * @return void
    */
   public function postProcess() {
     if ($this->_done) {
@@ -276,18 +277,11 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
         'contribution_source',
         'contribution_trxn_id',
         'contribution_page_id',
+        'contribution_product_id',
+        'invoice_id',
+        'payment_instrument_id',
       );
-      foreach ($specialParams as $element) {
-        $value = CRM_Utils_Array::value($element, $this->_formValues);
-        if ($value) {
-          if (is_array($value)) {
-            $this->_formValues[$element] = array('IN' => $value);
-          }
-          else {
-            $this->_formValues[$element] = array('LIKE' => "%$value%");
-          }
-        }
-      }
+      CRM_Contact_BAO_Query::processSpecialFormValue($this->_formValues, $specialParams);
 
       $tags = CRM_Utils_Array::value('contact_tags', $this->_formValues);
       if ($tags && !is_array($tags)) {
@@ -302,7 +296,7 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
         }
       }
 
-      if (!$config->groupTree) {
+      if (!defined('CIVICRM_GROUPTREE')) {
         $group = CRM_Utils_Array::value('group', $this->_formValues);
         if ($group && !is_array($group)) {
           unset($this->_formValues['group']);
@@ -318,7 +312,7 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
       }
     }
 
-    CRM_Core_BAO_CustomValue::fixFieldValueOfTypeMemo($this->_formValues);
+    CRM_Core_BAO_CustomValue::fixCustomFieldValue($this->_formValues);
 
     $this->_queryParams = CRM_Contact_BAO_Query::convertFormValues($this->_formValues);
 
@@ -378,10 +372,12 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
     $controller->run();
   }
 
+  /**
+   * Use values from $_GET if force is set to TRUE.
+   *
+   * Note that this means that GET over-rides POST. This was a historical decision & the reasoning is not explained.
+   */
   public function fixFormValues() {
-    // if this search has been forced
-    // then see if there are any get values, and if so over-ride the post values
-    // note that this means that GET over-rides POST :)
     if (!$this->_force) {
       return;
     }
@@ -400,6 +396,7 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
       $cid = CRM_Utils_Type::escape($cid, 'Integer');
       if ($cid > 0) {
         $this->_formValues['contact_id'] = $cid;
+        // @todo - why do we retrieve these when they are not used?
         list($display, $image) = CRM_Contact_BAO_Contact::getDisplayAndImage($cid);
         $this->_defaults['sort_name'] = CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_Contact', $cid,
           'sort_name'
@@ -461,7 +458,7 @@ class CRM_Contribute_Form_Search extends CRM_Core_Form_Search {
   }
 
   /**
-   * Return a descriptive name for the page, used in wizard header
+   * Return a descriptive name for the page, used in wizard header.
    *
    * @return string
    */

@@ -37,14 +37,6 @@
     return url;
   };
 
-  // @deprecated
-  $.extend ({'crmURL':
-    function (p, params) {
-      CRM.console('warn', 'Calling crmURL from jQuery is deprecated. Please use CRM.url() instead.');
-      return CRM.url(p, params);
-    }
-  });
-
   $.fn.crmURL = function () {
     return this.each(function() {
       if (this.href) {
@@ -55,6 +47,7 @@
 
   /**
    * AJAX api
+   * @link http://wiki.civicrm.org/confluence/display/CRMDOC/AJAX+Interface#AJAXInterface-CRM.api3
    */
   CRM.api3 = function(entity, action, params, status) {
     if (typeof(entity) === 'string') {
@@ -152,15 +145,6 @@
     })($.extend({}, settings, options));
   };
 
-  /**
-   * Backwards compatible with jQuery fn
-   * @deprecated
-   */
-  $.fn.crmAPI = function(entity, action, params, options) {
-    CRM.console('warn', 'Calling crmAPI from jQuery is deprecated. Please use CRM.api3() instead.');
-    return CRM.api.call(this, entity, action, params, options);
-  };
-
   $.widget('civi.crmSnippet', {
     options: {
       url: null,
@@ -225,14 +209,16 @@
         this.element.dialog('close');
       }
     },
-    _formatUrl: function(url) {
+    _formatUrl: function(url, snippetType) {
       // Strip hash
       url = url.split('#')[0];
       // Add snippet argument to url
-      if (url.search(/[&?]snippet=/) < 0) {
-        url += (url.indexOf('?') < 0 ? '?' : '&') + 'snippet=json';
-      } else {
-        url = url.replace(/snippet=[^&]*/, 'snippet=json');
+      if (snippetType) {
+        if (url.search(/[&?]snippet=/) < 0) {
+          url += (url.indexOf('?') < 0 ? '?' : '&') + 'snippet=' + snippetType;
+        } else {
+          url = url.replace(/snippet=[^&]*/, 'snippet=' + snippetType);
+        }
       }
       return url;
     },
@@ -241,7 +227,7 @@
       var that = this;
       $('a.crm-weight-arrow', that.element).click(function(e) {
         if (that.options.block) that.element.block();
-        $.getJSON(that._formatUrl(this.href)).done(function() {
+        $.getJSON(that._formatUrl(this.href, 'json')).done(function() {
           that.refresh();
         });
         e.stopImmediatePropagation();
@@ -250,7 +236,7 @@
     },
     refresh: function() {
       var that = this;
-      var url = this._formatUrl(this.options.url);
+      var url = this._formatUrl(this.options.url, 'json');
       if (this.options.crmForm) $('form', this.element).ajaxFormUnbind();
       if (this.options.block) this.element.block();
       $.getJSON(url, function(data) {
@@ -270,6 +256,14 @@
         that._handleOrderLinks();
         that.element.trigger('crmLoad', data);
         if (that.options.crmForm) that.element.trigger('crmFormLoad', data);
+        // This is only needed by forms that load via ajax but submit without ajax, e.g. configure contribution page tabs
+        // TODO: remove this when those forms have been converted to use ajax submit
+        if (data.status === 'form_error' && $.isPlainObject(data.errors)) {
+          that.element.trigger('crmFormError', data);
+          $.each(data.errors, function(formElement, msg) {
+            $('[name="'+formElement+'"]', that.element).crmError(msg);
+          });
+        }
       }).fail(function(data, msg, status) {
         that._onFailure(data, status);
       });
@@ -313,8 +307,13 @@
     // Create new dialog
     if (settings.dialog) {
       settings.dialog = CRM.utils.adjustDialogDefaults(settings.dialog);
-      $('<div id="' + settings.target.substring(1) + '"></div>').dialog(settings.dialog);
+      $('<div id="' + settings.target.substring(1) + '"></div>')
+        .dialog(settings.dialog)
+        .parent().find('.ui-dialog-titlebar')
+        .append($('<a class="crm-dialog-titlebar-print ui-dialog-titlebar-close" title="'+ts('Print window')+'" target="_blank" style="right:3.8em;"/>')
+          .button({icons: {primary: 'fa-print'}, text: false}));
     }
+    // Add handlers to new or existing dialog
     if ($(settings.target).data('uiDialog')) {
       $(settings.target)
         .on('dialogclose', function() {
@@ -327,6 +326,8 @@
           if (e.target === $(settings.target)[0] && data && !settings.dialog.title && data.title) {
             $(this).dialog('option', 'title', data.title);
           }
+          // Update print url
+          $(this).parent().find('a.crm-dialog-titlebar-print').attr('href', $(this).data('civiCrmSnippet')._formatUrl($(this).crmSnippet('option', 'url'), '2'));
         });
     }
     $(settings.target).crmSnippet(settings).crmSnippet('refresh');
@@ -364,7 +365,7 @@
         var id = widget.attr('id') + '-unsaved-alert',
           title = widget.dialog('option', 'title'),
           alert = CRM.alert('<p>' + ts('%1 has not been saved.', {1: title}) + '</p><p><a href="#" id="' + id + '">' + ts('Restore') + '</a></p>', ts('Unsaved Changes'), 'alert unsaved-dialog', {expires: 60000});
-        $('#' + id).button({icons: {primary: 'ui-icon-arrowreturnthick-1-w'}}).click(function(e) {
+        $('#' + id).button({icons: {primary: 'fa-undo'}}).click(function(e) {
           widget.attr('data-unsaved-changes', 'false').dialog('open');
           e.preventDefault();
         });
@@ -441,17 +442,20 @@
       }, settings.ajaxForm));
       if (settings.openInline) {
         settings.autoClose = $el.crmSnippet('isOriginalUrl');
-        $(settings.openInline, this).not(exclude + ', .crm-popup').click(function(event) {
+        $(this).on('click', settings.openInline, function(e) {
+          if ($(this).is(exclude + ', .crm-popup')) {
+            return;
+          }
           if ($(this).hasClass('open-inline-noreturn')) {
             // Force reset of original url
             $el.data('civiCrmSnippet')._originalUrl = $(this).attr('href');
           }
           $el.crmSnippet('option', 'url', $(this).attr('href')).crmSnippet('refresh');
-          return false;
+          e.preventDefault();
         });
       }
-      // Show form buttons as part of the dialog
       if ($el.data('uiDialog')) {
+        // Show form buttons as part of the dialog
         var buttonContainers = '.crm-submit-buttons, .action-link',
           buttons = [],
           added = [];
@@ -460,15 +464,15 @@
             label = $el.is('input') ? $el.attr('value') : $el.text(),
             identifier = $el.attr('name') || $el.attr('href');
           if (!identifier || identifier === '#' || $.inArray(identifier, added) < 0) {
-            var $icon = $el.find('.icon'),
+            var $icon = $el.find('.icon, .crm-i'),
               button = {'data-identifier': identifier, text: label, click: function() {
                 $el[0].click();
               }};
             if ($icon.length) {
               button.icons = {primary: $icon.attr('class')};
             } else {
-              var action = $el.attr('crm-icon') || ($el.hasClass('cancel') ? 'close' : 'check');
-              button.icons = {primary: 'ui-icon-' + action};
+              var action = $el.attr('crm-icon') || ($el.hasClass('cancel') ? 'fa-times' : 'fa-check');
+              button.icons = {primary: action};
             }
             buttons.push(button);
             added.push(identifier);

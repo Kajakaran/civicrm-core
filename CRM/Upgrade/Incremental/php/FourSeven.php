@@ -25,37 +25,40 @@
  */
 
 /**
- *
- * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
+ * Upgrade logic for 4.7
  */
-class CRM_Upgrade_Incremental_php_FourSeven {
-  const BATCH_SIZE = 5000;
+class CRM_Upgrade_Incremental_php_FourSeven extends CRM_Upgrade_Incremental_Base {
 
   /**
-   * Verify DB state.
-   *
-   * @param $errors
-   *
-   * @return bool
-   */
-  public function verifyPreDBstate(&$errors) {
-    return TRUE;
-  }
-
-  /**
-   * Compute any messages which should be displayed before upgrade.
+   * Compute any messages which should be displayed beforeupgrade.
    *
    * Note: This function is called iteratively for each upcoming
    * revision to the database.
    *
-   * @param $preUpgradeMessage
+   * @param string $preUpgradeMessage
    * @param string $rev
    *   a version number, e.g. '4.4.alpha1', '4.4.beta3', '4.4.0'.
    * @param null $currentVer
    */
   public function setPreUpgradeMessage(&$preUpgradeMessage, $rev, $currentVer = NULL) {
+    if ($rev == '4.7.alpha1') {
+      // CRM-16478 Remove custom fatal error template path option
+      $config = CRM_Core_Config::singleton();
+      if (!empty($config->fatalErrorTemplate) && $config->fatalErrorTemplate != 'CRM/common/fatal.tpl') {
+        $preUpgradeMessage .= '<p>' . ts('The custom fatal error template setting will be removed during the upgrade. You are currently using this custom template: %1 . Following the upgrade you will need to use the standard approach to overriding template files, as described in the documentation.', array(1 => $config->fatalErrorTemplate)) . '</p>';
+      }
+    }
+    if ($rev == '4.7.alpha4') {
+      // CRM-17004 Warn of Moneris removal
+      $count = 1;
+      // Query only works in 4.3+
+      if (version_compare($currentVer, "4.3.0") > 0) {
+        $count = CRM_Core_DAO::singleValueQuery("SELECT COUNT(id) FROM civicrm_payment_processor WHERE payment_processor_type_id IN (SELECT id FROM civicrm_payment_processor_type WHERE name = 'Moneris')");
+      }
+      if ($count && !function_exists('moneris_civicrm_managed')) {
+        $preUpgradeMessage .= '<p>' . ts('The %1 payment processor is no longer bundled with CiviCRM. After upgrading you will need to install the extension to continue using it.', array(1 => 'Moneris')) . '</p>';
+      }
+    }
   }
 
   /**
@@ -65,44 +68,37 @@ class CRM_Upgrade_Incremental_php_FourSeven {
    *   alterable.
    * @param string $rev
    *   an intermediate version; note that setPostUpgradeMessage is called repeatedly with different $revs.
-   * @return void
    */
   public function setPostUpgradeMessage(&$postUpgradeMessage, $rev) {
-  }
+    if ($rev == '4.7.alpha1') {
+      $config = CRM_Core_Config::singleton();
+      // FIXME: Performing an upgrade step during postUpgrade message phase is probably bad
+      $editor_id = self::updateWysiwyg();
+      $msg = NULL;
+      $ext_href = 'href="' . CRM_Utils_System::url('civicrm/admin/extensions', 'reset=1') . '"';
+      $dsp_href = 'href="' . CRM_Utils_System::url('civicrm/admin/setting/preferences/display', 'reset=1') . '"';
+      $blog_href = 'href="https://civicrm.org/blogs/colemanw/big-changes-wysiwyg-editing-47"';
+      switch ($editor_id) {
+        // TinyMCE
+        case 1:
+          $msg = ts('Your configured editor "TinyMCE" is no longer part of the main CiviCRM download. To continue using it, visit the <a %1>Manage Extensions</a> page to download and install the TinyMCE extension.', array(1 => $ext_href));
+          break;
 
+        // Drupal/Joomla editor
+        case 3:
+        case 4:
+          $msg = ts('CiviCRM no longer integrates with the "%1 Default Editor." Your wysiwyg setting has been reset to the built-in CKEditor. <a %2>Learn more...</a>', array(1 => $config->userFramework, 2 => $blog_href));
+          break;
+      }
+      if ($msg) {
+        $postUpgradeMessage .= '<p>' . $msg . '</p>';
+      }
+      $postUpgradeMessage .= '<p>' . ts('CiviCRM now includes the easy-to-use CKEditor Configurator. To customize the features and display of your wysiwyg editor, visit the <a %1>Display Preferences</a> page. <a %2>Learn more...</a>', array(1 => $dsp_href, 2 => $blog_href)) . '</p>';
 
-  /**
-   * (Queue Task Callback)
-   */
-  public static function task_4_7_x_runSql(CRM_Queue_TaskContext $ctx, $rev) {
-    $upgrade = new CRM_Upgrade_Form();
-    $upgrade->processSQL($rev);
+      $postUpgradeMessage .= '<br /><br />' . ts('Default version of the following System Workflow Message Templates have been modified: <ul><li>Personal Campaign Pages - Owner Notification</li></ul> If you have modified these templates, please review the new default versions and implement updates as needed to your copies (Administer > Communications > Message Templates > System Workflow Messages).');
 
-    return TRUE;
-  }
-
-  /**
-   * Syntactic sugar for adding a task which (a) is in this class and (b) has
-   * a high priority.
-   *
-   * After passing the $funcName, you can also pass parameters that will go to
-   * the function. Note that all params must be serializable.
-   */
-  protected function addTask($title, $funcName) {
-    $queue = CRM_Queue_Service::singleton()->load(array(
-      'type' => 'Sql',
-      'name' => CRM_Upgrade_Form::QUEUE_NAME,
-    ));
-
-    $args = func_get_args();
-    $title = array_shift($args);
-    $funcName = array_shift($args);
-    $task = new CRM_Queue_Task(
-      array(get_class($this), $funcName),
-      $args,
-      $title
-    );
-    $queue->createItem($task, array('weight' => -1));
+      $postUpgradeMessage .= '<p>' . ts('The custom fatal error template setting has been removed.') . '</p>';
+    }
   }
 
   /**
@@ -111,24 +107,253 @@ class CRM_Upgrade_Incremental_php_FourSeven {
    * @param string $rev
    */
   public function upgrade_4_7_alpha1($rev) {
-    // Task to process sql.
-    $this->addTask(ts('Update wysiwyg editor settings.'), 'updateWysiwyg');
+    $this->addTask('Migrate \'on behalf of\' information to module_data', 'migrateOnBehalfOfInfo');
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => $rev)), 'runSql', $rev);
+    $this->addTask(ts('Migrate Settings to %1', array(1 => $rev)), 'migrateSettings', $rev);
+    $this->addTask('Add Getting Started dashlet', 'addGettingStartedDashlet', $rev);
+  }
+
+  /**
+   * Upgrade function.
+   *
+   * @param string $rev
+   */
+  public function upgrade_4_7_alpha4($rev) {
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => $rev)), 'runSql', $rev);
+    $this->addTask(ts('Remove %1', array(1 => 'Moneris')), 'removePaymentProcessorType', 'Moneris');
+    $this->addTask('Update Smart Groups', 'fixContactTypeInSmartGroups');
+  }
+
+  /**
+   * Upgrade function.
+   *
+   * @param string $rev
+   */
+  public function upgrade_4_7_beta2($rev) {
+    $this->addTask(ts('Upgrade DB to %1: SQL', array(1 => $rev)), 'runSql', $rev);
+    $this->addTask('Delete unused file', 'deleteVersionCheckCacheFile');
   }
 
   /**
    * CRM-16354
    *
+   * @return int
+   */
+  public static function updateWysiwyg() {
+    $editorID = Civi::settings()->get('editor_id');
+    // Previously a numeric value indicated one of 4 wysiwyg editors shipped in core, and no value indicated 'Textarea'
+    // Now the options are "Textarea", "CKEditor", and the rest have been dropped from core.
+    $newEditor = $editorID ? "CKEditor" : "Textarea";
+    Civi::settings()->set('editor_id', $newEditor);
+
+    return $editorID;
+  }
+
+  /**
+   * Migrate any last remaining options from `civicrm_domain.config_backend` to `civicrm_setting`.
+   * Cleanup setting schema.
+   *
+   * @param CRM_Queue_TaskContext $ctx
+   * @return bool
+   */
+  public function migrateSettings(CRM_Queue_TaskContext $ctx) {
+    CRM_Core_DAO::executeQuery('ALTER TABLE civicrm_setting DROP INDEX index_group_name');
+    CRM_Core_DAO::executeQuery('ALTER TABLE civicrm_setting DROP COLUMN group_name');
+    CRM_Core_DAO::executeQuery('ALTER TABLE civicrm_setting ADD UNIQUE INDEX index_domain_contact_name (domain_id, contact_id, name)');
+
+    $domainDao = CRM_Core_DAO::executeQuery('SELECT id, config_backend FROM civicrm_domain');
+    while ($domainDao->fetch()) {
+      $settings = CRM_Upgrade_Incremental_php_FourSeven::convertBackendToSettings($domainDao->id, $domainDao->config_backend);
+      CRM_Core_Error::debug_var('convertBackendToSettings', array(
+        'domainId' => $domainDao->id,
+        'backend' => $domainDao->config_backend,
+        'settings' => $settings,
+      ));
+
+      foreach ($settings as $name => $value) {
+        $rowParams = array(
+          1 => array($domainDao->id, 'Positive'),
+          2 => array($name, 'String'),
+          3 => array(serialize($value), 'String'),
+        );
+        $settingId = CRM_Core_DAO::singleValueQuery(
+          'SELECT id FROM civicrm_setting WHERE domain_id = %1 AND name = %2',
+          $rowParams);
+        if (!$settingId) {
+          CRM_Core_DAO::executeQuery(
+            'INSERT INTO civicrm_setting (domain_id, name, value, is_domain) VALUES (%1,%2,%3,1)',
+            $rowParams);
+        }
+      }
+    }
+
+    CRM_Core_DAO::executeQuery('ALTER TABLE civicrm_domain DROP COLUMN config_backend');
+
+    return TRUE;
+  }
+
+  /**
+   * Take a config_backend blob and produce an equivalent list of settings.
+   *
+   * @param int $domainId
+   *   Domain ID.
+   * @param string $config_backend
+   *   Serialized blob.
+   * @return array
+   */
+  public static function convertBackendToSettings($domainId, $config_backend) {
+    if (!$config_backend) {
+      return array();
+    }
+
+    $backend = unserialize($config_backend);
+    if (!$backend) {
+      return array();
+    }
+
+    $mappings = \CRM_Core_Config_MagicMerge::getPropertyMap();
+    $settings = array();
+    foreach ($backend as $propertyName => $propertyValue) {
+      if (isset($mappings[$propertyName][0]) && preg_match('/^setting/', $mappings[$propertyName][0])) {
+        // $mapping format: $propertyName => Array(0 => $type, 1 => $setting|NULL).
+        $settingName = isset($mappings[$propertyName][1]) ? $mappings[$propertyName][1] : $propertyName;
+        $settings[$settingName] = $propertyValue;
+      }
+    }
+
+    return $settings;
+  }
+
+  /**
+   * Add Getting Started dashlet to dashboard
+   *
    * @param \CRM_Queue_TaskContext $ctx
    *
    * @return bool
    */
-  public static function updateWysiwyg(CRM_Queue_TaskContext $ctx) {
-    $editorID = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'editor_id');
-    // Previously any value indicated one of 4 wysiwyg editors shipped in core, and no value indicated 'Textfield'
-    // Now Textfield is 1, CKEditor is 2, and the rest have been dropped from core.
-    $editorID = $editorID ? 2 : 1;
-    CRM_Core_BAO_Setting::setItem($editorID, CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'editor_id');
+  public function addGettingStartedDashlet(CRM_Queue_TaskContext $ctx) {
+    $sql = "SELECT count(*) FROM civicrm_dashboard WHERE name='gettingStarted'";
+    $res = CRM_Core_DAO::singleValueQuery($sql);
+    $domainId = CRM_Core_Config::domainID();
+    if ($res <= 0) {
+      $sql = "INSERT INTO `civicrm_dashboard`
+    ( `domain_id`, `name`, `label`, `url`, `permission`, `permission_operator`, `column_no`, `is_minimized`, `is_active`, `weight`, `fullscreen_url`, `is_fullscreen`, `is_reserved`) VALUES ( {$domainId}, 'getting-started', 'Getting Started', 'civicrm/dashlet/getting-started?reset=1&snippet=5', 'access CiviCRM', NULL, 0, 0, 1, 0, 'civicrm/dashlet/getting-started?reset=1&snippet=5&context=dashletFullscreen', 1, 1)";
+      CRM_Core_DAO::executeQuery($sql);
+      // Add default position for Getting Started Dashlet ( left column)
+      $sql = "INSERT INTO `civicrm_dashboard_contact` (dashboard_id, contact_id, column_no, is_active)
+SELECT (SELECT MAX(id) FROM `civicrm_dashboard`), contact_id, 0, IF (SUM(is_active) > 0, 1, 0)
+FROM `civicrm_dashboard_contact` WHERE 1 GROUP BY contact_id";
+      CRM_Core_DAO::executeQuery($sql);
+    }
+    return TRUE;
+  }
 
+  /**
+   * Migrate on-behalf information to uf_join.module_data as on-behalf columns will be dropped
+   * on DB upgrade
+   *
+   * @param CRM_Queue_TaskContext $ctx
+   *
+   * @return bool
+   *   TRUE for success
+   */
+  public static function migrateOnBehalfOfInfo(CRM_Queue_TaskContext $ctx) {
+    $domain = new CRM_Core_DAO_Domain();
+    $domain->find(TRUE);
+
+    // fetch onBehalf entry in UFJoin table
+    $ufGroupDAO = new CRM_Core_DAO_UFJoin();
+    $ufGroupDAO->module = 'OnBehalf';
+    $ufGroupDAO->find(TRUE);
+
+    $forOrgColums = array();
+    if ($domain->locales) {
+      $locales = explode(CRM_Core_DAO::VALUE_SEPARATOR, $domain->locales);
+      foreach ($locales as $locale) {
+        $forOrgColums[] = "for_organization_{$locale}";
+      }
+    }
+    else {
+      $forOrgColums[] = "for_organization";
+    }
+
+    $query = "
+      SELECT " . implode(", ", $forOrgColums) . ", uj.id as join_id, uj.uf_group_id as uf_group_id
+      FROM civicrm_contribution_page cp
+       INNER JOIN civicrm_uf_join uj ON uj.entity_id = cp.id AND uj.module = 'OnBehalf'";
+    $dao = CRM_Core_DAO::executeQuery($query, array(), TRUE, NULL, FALSE, FALSE);
+
+    if ($dao->N) {
+      while ($dao->fetch()) {
+        $onBehalfParams['on_behalf'] = array('is_for_organization' => $dao->is_for_organization);
+        if ($domain->locales) {
+          foreach ($locales as $locale) {
+            $for_organization = "for_organization_{$locale}";
+            $onBehalfParams['on_behalf'] += array(
+              $locale => array(
+                'for_organization' => $dao->$for_organization,
+              ),
+            );
+          }
+        }
+        else {
+          $onBehalfParams['on_behalf'] += array(
+            'default' => array(
+              'for_organization' => $dao->for_organization,
+            ),
+          );
+        }
+        $ufJoinParam = array(
+          'id' => $dao->join_id,
+          'module' => 'on_behalf',
+          'uf_group_id' => $dao->uf_group_id,
+          'module_data' => json_encode($onBehalfParams),
+        );
+        CRM_Core_BAO_UFJoin::create($ufJoinParam);
+      }
+    }
+
+    return TRUE;
+  }
+
+  /**
+   * CRM-11782 - Get rid of VALUE_SEPARATOR character in saved search form values
+   *
+   * @param \CRM_Queue_TaskContext $ctx
+   *
+   * @return bool
+   */
+  public function fixContactTypeInSmartGroups(CRM_Queue_TaskContext $ctx) {
+    $sep = CRM_Core_DAO::VALUE_SEPARATOR;
+    $dao = CRM_Core_DAO::executeQuery("SELECT id, form_values FROM civicrm_saved_search WHERE form_values LIKE '%$sep%'");
+    while ($dao->fetch()) {
+      $formValues = unserialize($dao->form_values);
+      if (isset($formValues['contact_type']) && is_array($formValues['contact_type'])) {
+        $newVals = array();
+        foreach ($formValues['contact_type'] as $key => $val) {
+          $newVals[str_replace($sep, '__', $key)] = is_string($val) ? str_replace($sep, '__', $val) : $val;
+        }
+        $formValues['contact_type'] = $newVals;
+      }
+      CRM_Core_DAO::executeQuery("UPDATE civicrm_saved_search SET form_values = %1 WHERE id = {$dao->id}", array(1 => array(serialize($formValues), 'String')));
+    }
+
+    return TRUE;
+  }
+
+  /**
+   * CRM-17637 - Ths file location has been moved; delete the old one
+   *
+   * @param \CRM_Queue_TaskContext $ctx
+   *
+   * @return bool
+   */
+  public function deleteVersionCheckCacheFile(CRM_Queue_TaskContext $ctx) {
+    $config = CRM_Core_Config::singleton();
+    $cacheFile = $config->uploadDir . 'version-info-cache.json';
+    if (file_exists($cacheFile)) {
+      unlink($cacheFile);
+    }
     return TRUE;
   }
 

@@ -1,5 +1,5 @@
 {if !$membershipMode}
-  {if $accessContribution}
+  {if $accessContribution && $action != 2}
     <table>
       <tr class="crm-{$formClass}-form-block-contribution-contact">
         <td class="label">{$form.is_different_contribution_contact.label}</td>
@@ -99,8 +99,9 @@
   </tr>
   <tr class="crm-membership-form-block-billing">
     <td colspan="2">
-      {include file='CRM/Core/BillingBlock.tpl'}
+      {include file='CRM/Core/BillingBlockWrapper.tpl'}
     </td>
   </tr>
+
   <div class="spacer"></div>
 {/if}

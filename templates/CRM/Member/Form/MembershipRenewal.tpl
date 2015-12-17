@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -24,9 +24,6 @@
  +--------------------------------------------------------------------+
 *}
 {* this template is used for renewing memberships for a contact  *}
-{if $cdType }
-  {include file="CRM/Custom/Form/CustomData.tpl"}
-{else}
   {if $membershipMode == 'test' }
     {assign var=registerMode value="TEST"}
   {elseif $membershipMode == 'live'}
@@ -39,7 +36,7 @@
     </div>
   {/if}
   {if $membershipMode}
-    <div id="help">
+    <div class="help">
       {ts 1=$displayName 2=$registerMode}Use this form to Renew Membership Record on behalf of %1.
         <strong>A %2 transaction will be submitted</strong>
         using the selected payment processor.{/ts}
@@ -73,7 +70,7 @@
                     onclick='adjustMembershipOrgType(); return false;'>{ts}change membership type{/ts}</a>
         </td>
       </tr>
-      <tr id="membershipOrgType" class="crm-member-membershiprenew-form-block-renew_org_name">
+      <tr id="membershipOrgType" class="crm-member-membershiprenew-form-block-renew_org_name hiddenElement">
         <td class="label">{$form.membership_type_id.label}</td>
         <td>{$form.membership_type_id.html}
           {if $member_is_test} {ts}(test){/ts}{/if}<br/>
@@ -93,19 +90,20 @@
         <td class="label">{$form.renewal_date.label}</td>
         <td>{include file="CRM/common/jcalendar.tpl" elementName=renewal_date}</td>
       </tr>
-      {if $membershipMode}
-        {if !empty($form.auto_renew)}
-          <tr id="autoRenew" class="crm-membership-form-block-auto_renew">
-            <td class="label"> {$form.auto_renew.label} {help id="id-auto_renew" file="CRM/Member/Form/Membership.hlp" action=$action} </td>
-            <td> {$form.auto_renew.html} </td>
-          </tr>
-        {/if}
-        <tr class="crm-member-membershiprenew-form-block-financial_type_id">
-          <td class="label">{$form.financial_type_id.label}</td>
-          <td>{$form.financial_type_id.html}<br/>
-            <span class="description">{ts}Select the appropriate financial type for this payment.{/ts}</span></td>
-        </tr>
-      {/if}
+      <tr id="defaultNumTerms" class="crm-member-membershiprenew-form-block-default-num_terms">
+        <td colspan="2" class="description">
+          {ts}Renewal extends membership end date by one membership period{/ts}
+          &nbsp; <a id="changeTermsLink" href='#'
+                    onclick='changeNumTerms(); return false;'>{ts}change{/ts}</a>
+        </td>
+      </tr>
+      <tr id="changeNumTerms" class="crm-member-membershiprenew-form-block-change-num_terms">
+        <td class="label">{$form.num_terms.label}</td>
+        <td>{$form.num_terms.html|crmAddClass:two} {ts}membership periods{/ts}<br/>
+          <span
+            class="description">{ts}Extend the membership end date by this many membership periods. Make sure the appropriate corresponding fee is entered below.{/ts}</span>
+        </td>
+      </tr>
       {if $accessContribution and ! $membershipMode}
         <tr class="crm-member-membershiprenew-form-block-record_contribution">
           <td class="label">{$form.record_contribution.label}</td>
@@ -118,21 +116,6 @@
           <td colspan="2">
             <fieldset>
               <legend>{ts}Renewal Payment and Receipt{/ts}</legend>
-              <table class="form-layout-compressed">
-                <tr id="defaultNumTerms" class="crm-member-membershiprenew-form-block-default-num_terms">
-                  <td colspan="2" class="description">
-                    {ts}Renewal extends membership end date by one membership period{/ts}
-                    &nbsp; <a id="changeTermsLink" href='#'
-                              onclick='changeNumTerms(); return false;'>{ts}change{/ts}</a>
-                  </td>
-                </tr>
-                <tr id="changeNumTerms" class="crm-member-membershiprenew-form-block-change-num_terms">
-                  <td class="label">{$form.num_terms.label}</td>
-                  <td>{$form.num_terms.html|crmAddClass:two} {ts}membership periods{/ts}<br/>
-                    <span
-                      class="description">{ts}Extend the membership end date by this many membership periods. Make sure the appropriate corresponding fee is entered below.{/ts}</span>
-                  </td>
-                </tr>
       {/if}
       {include file="CRM/Member/Form/MembershipCommon.tpl"}
       {if $emailExists and $outBound_option != 2}
@@ -301,6 +284,8 @@
       else {
         cj("#total_amount").val(allMemberships[memType]['total_amount']);
       }
+
+      cj('.totaltaxAmount').html(allMemberships[memType]['tax_message']);
     }
 
     // show/hide different contact section
@@ -320,4 +305,3 @@
     }
   </script>
 {/literal}
-{/if}{* closing of custom data if *}

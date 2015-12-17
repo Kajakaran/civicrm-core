@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -71,49 +71,22 @@ class CRM_Report_Form_Event_ParticipantListing extends CRM_Report_Form_Event {
     $this->_columns = array(
       'civicrm_contact' => array(
         'dao' => 'CRM_Contact_DAO_Contact',
-        'fields' => array(
+        'fields' => array_merge(array(
+          // CRM-17115 - to avoid changing report output at this stage re-instate
+          // old field name for sort name
           'sort_name_linked' => array(
             'title' => ts('Participant Name'),
             'required' => TRUE,
             'no_repeat' => TRUE,
             'dbAlias' => 'contact_civireport.sort_name',
-          ),
-          'first_name' => array(
-            'title' => ts('First Name'),
-          ),
-          'middle_name' => array(
-            'title' => ts('Middle Name'),
-          ),
-          'last_name' => array(
-            'title' => ts('Last Name'),
-          ),
-          'id' => array(
-            'no_display' => TRUE,
-            'required' => TRUE,
-          ),
-          'employer_id' => array(
-            'title' => ts('Organization'),
-          ),
-          'gender_id' => array(
-            'title' => ts('Gender'),
-          ),
-          'birth_date' => array(
-            'title' => ts('Birth Date'),
-          ),
-          'age' => array(
-            'title' => ts('Age'),
-            'dbAlias' => 'TIMESTAMPDIFF(YEAR, contact_civireport.birth_date, CURDATE())',
-          ),
-          'age_at_event' => array(
-            'title' => ts('Age at Event'),
-            'dbAlias' => 'TIMESTAMPDIFF(YEAR, contact_civireport.birth_date, event_civireport.start_date)',
-          ),
-          'contact_type' => array(
-            'title' => ts('Contact Type'),
-          ),
-          'contact_sub_type' => array(
-            'title' => ts('Contact Subtype'),
-          ),
+          )),
+          $this->getBasicContactFields(),
+          array(
+            'age_at_event' => array(
+              'title' => ts('Age at Event'),
+              'dbAlias' => 'TIMESTAMPDIFF(YEAR, contact_civireport.birth_date, event_civireport.start_date)',
+            ),
+          )
         ),
         'grouping' => 'contact-fields',
         'order_bys' => array(
@@ -184,21 +157,9 @@ class CRM_Report_Form_Event_ParticipantListing extends CRM_Report_Form_Event {
           ),
         ),
       ),
-      'civicrm_address' => array(
-        'dao' => 'CRM_Core_DAO_Address',
-        'fields' => array(
-          'street_address' => NULL,
-          'city' => NULL,
-          'postal_code' => NULL,
-          'state_province_id' => array(
-            'title' => ts('State/Province'),
-          ),
-          'country_id' => array(
-            'title' => ts('Country'),
-          ),
-        ),
-        'grouping' => 'contact-fields',
-      ),
+    );
+    $this->_columns += $this->getAddressColumns();
+    $this->_columns += array(
       'civicrm_participant' => array(
         'dao' => 'CRM_Event_DAO_Participant',
         'fields' => array(
@@ -224,8 +185,11 @@ class CRM_Report_Form_Event_ParticipantListing extends CRM_Report_Form_Event {
             'required' => TRUE,
             'no_display' => TRUE,
           ),
+          'registered_by_id' => array(
+            'title' => ts('Registered by Participant ID'),
+          ),
           'participant_fee_level' => NULL,
-          'participant_fee_amount' => NULL,
+          'participant_fee_amount' => array('title' => ts('Participant Fee')),
           'participant_register_date' => array('title' => ts('Registration Date')),
           'total_paid' => array(
             'title' => ts('Total Paid'),
@@ -273,7 +237,11 @@ class CRM_Report_Form_Event_ParticipantListing extends CRM_Report_Form_Event {
             'default' => NULL,
             'type' => CRM_Utils_Type::T_STRING,
           ),
-
+          'registered_by_id' => array(
+            'title' => ts('Registered by Participant ID'),
+            'type' => CRM_Utils_Type::T_STRING,
+            'operator' => 'like',
+          ),
         ),
         'order_bys' => array(
           'participant_register_date' => array(
@@ -323,6 +291,9 @@ class CRM_Report_Form_Event_ParticipantListing extends CRM_Report_Form_Event {
             'title' => ts('Event Type'),
             'default_weight' => '2',
             'default_order' => 'ASC',
+          ),
+          'event_start_date' => array(
+            'title' => ts('Event Start Date'),
           ),
         ),
       ),
@@ -414,6 +385,10 @@ class CRM_Report_Form_Event_ParticipantListing extends CRM_Report_Form_Event {
       ),
     );
 
+    // CRM-17115 avoid duplication of sort_name - would be better to standardise name
+    // & behaviour across reports but trying for no change at this point.
+    $this->_columns['civicrm_contact']['fields']['sort_name']['no_display'] = TRUE;
+
     // If we have active campaigns add those elements to both the fields and filters
     if ($campaignEnabled && !empty($this->activeCampaigns)) {
       $this->_columns['civicrm_participant']['fields']['campaign_id'] = array(
@@ -441,7 +416,7 @@ class CRM_Report_Form_Event_ParticipantListing extends CRM_Report_Form_Event {
    */
   public function getPriceLevels() {
     $query = "
-SELECT CONCAT(cv.label, ' (', ps.title, ')') label, cv.id
+SELECT CONCAT(cv.label, ' (', ps.title, ' - ', cf.label , ')') label, cv.id
 FROM civicrm_price_field_value cv
 LEFT JOIN civicrm_price_field cf
   ON cv.price_field_id = cf.id
@@ -566,9 +541,12 @@ ORDER BY  cv.label
                   ON (eft.entity_id = {$this->_aliases['civicrm_contribution']}.id)
             LEFT JOIN civicrm_financial_account fa
                   ON (fa.account_type_code = 'AR')
+            LEFT JOIN civicrm_financial_account fae
+                  ON (fae.account_type_code = 'EXP')
             LEFT JOIN civicrm_financial_trxn ft
                   ON (ft.id = eft.financial_trxn_id AND eft.entity_table = 'civicrm_contribution') AND
-                     (ft.to_financial_account_id != fa.id)
+                     (ft.to_financial_account_id != fa.id) AND
+                     (ft.to_financial_account_id != fae.id)
       ";
     }
   }
@@ -595,8 +573,13 @@ ORDER BY  cv.label
             if ($fieldName == 'rid') {
               $value = CRM_Utils_Array::value("{$fieldName}_value", $this->_params);
               if (!empty($value)) {
-                $clause = "( {$field['dbAlias']} REGEXP '[[:<:]]" .
-                  implode('[[:>:]]|[[:<:]]', $value) . "[[:>:]]' )";
+                $operator = '';
+                if ($op == 'notin') {
+                  $operator = 'NOT';
+                }
+
+                $regexp = "[[:cntrl:]]*" . implode('[[:>:]]*|[[:<:]]*', $value) . "[[:cntrl:]]*";
+                $clause = "{$field['dbAlias']} {$operator} REGEXP '{$regexp}'";
               }
               $op = NULL;
             }
@@ -634,28 +617,9 @@ ORDER BY  cv.label
   }
 
   public function postProcess() {
-
-    // get ready with post process params
-    $this->beginPostProcess();
-
     // get the acl clauses built before we assemble the query
     $this->buildACLClause($this->_aliases['civicrm_contact']);
-    // build query
-    $sql = $this->buildQuery(TRUE);
-
-    // build array of result based on column headers. This method also allows
-    // modifying column headers before using it to build result set i.e $rows.
-    $rows = array();
-    $this->buildRows($sql, $rows);
-
-    // format result set.
-    $this->formatDisplay($rows);
-
-    // assign variables to templates
-    $this->doTemplateAssignment($rows);
-
-    // do print / pdf / instance stuff if needed
-    $this->endPostProcess($rows);
+    parent::postProcess();
   }
 
   /**
@@ -696,7 +660,6 @@ ORDER BY  cv.label
     $financialTypes = CRM_Contribute_PseudoConstant::financialType();
     $contributionStatus = CRM_Contribute_PseudoConstant::contributionStatus();
     $paymentInstruments = CRM_Contribute_PseudoConstant::paymentInstrument();
-    $genders = CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id', array('localize' => TRUE));
 
     foreach ($rows as $rowNum => $row) {
       // make count columns point to detail report
@@ -779,24 +742,6 @@ ORDER BY  cv.label
         $entryFound = TRUE;
       }
 
-      // Handle country id
-      if (array_key_exists('civicrm_address_country_id', $row)) {
-        $countryId = $row['civicrm_address_country_id'];
-        if ($countryId) {
-          $rows[$rowNum]['civicrm_address_country_id'] = CRM_Core_PseudoConstant::country($countryId, TRUE);
-        }
-        $entryFound = TRUE;
-      }
-
-      // Handle state/province id
-      if (array_key_exists('civicrm_address_state_province_id', $row)) {
-        $provinceId = $row['civicrm_address_state_province_id'];
-        if ($provinceId) {
-          $rows[$rowNum]['civicrm_address_state_province_id'] = CRM_Core_PseudoConstant::stateProvince($provinceId, TRUE);
-        }
-        $entryFound = TRUE;
-      }
-
       // Handle employer id
       if (array_key_exists('civicrm_contact_employer_id', $row)) {
         $employerId = $row['civicrm_contact_employer_id'];
@@ -822,8 +767,7 @@ ORDER BY  cv.label
       // handle financial type
       $this->_initBasicRow($rows, $entryFound, $row, 'civicrm_contribution_financial_type_id', $rowNum, $financialTypes);
 
-      // handle gender id
-      $this->_initBasicRow($rows, $entryFound, $row, 'civicrm_contact_gender_id', $rowNum, $genders);
+      $entryFound = $this->alterDisplayContactFields($row, $rows, $rowNum, 'event/participantListing', 'View Event Income Details') ? TRUE : $entryFound;
 
       // display birthday in the configured custom format
       if (array_key_exists('civicrm_contact_birth_date', $row)) {
@@ -833,6 +777,7 @@ ORDER BY  cv.label
         }
         $entryFound = TRUE;
       }
+      $entryFound = $this->alterDisplayAddressFields($row, $rows, $rowNum, 'event/ParticipantListing', 'List all participant(s) for this ') ? TRUE : $entryFound;
 
       // skip looking further in rows, if first row itself doesn't
       // have the column we need

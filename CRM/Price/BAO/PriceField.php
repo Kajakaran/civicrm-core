@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -298,7 +298,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
     //use value field.
     $valueFieldName = 'amount';
     $seperator = '|';
-    $invoiceSettings = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::CONTRIBUTE_PREFERENCES_NAME, 'contribution_invoice_settings');
+    $invoiceSettings = Civi::settings()->get('contribution_invoice_settings');
     $taxTerm = CRM_Utils_Array::value('tax_term', $invoiceSettings);
     $displayOpt = CRM_Utils_Array::value('tax_display_settings', $invoiceSettings);
     $invoicing = CRM_Utils_Array::value('invoicing', $invoiceSettings);
@@ -401,6 +401,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
             'price' => json_encode(array($elementName, $priceVal)),
             'data-amount' => $opt[$valueFieldName],
             'data-currency' => $currencyName,
+            'data-price-field-values' => json_encode($customOption),
           );
           if (!empty($qf->_quickConfig) && $field->name == 'contribution_amount') {
             $extra += array('onclick' => 'clearAmountOther();');
@@ -429,6 +430,8 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
         if (!empty($qf->_membershipBlock) && $field->name == 'contribution_amount') {
           $choice[] = $qf->createElement('radio', NULL, '', ts('No thank you'), '-1',
             array(
+              'price' => json_encode(array($elementName, '0|0')),
+              'data-currency' => $currencyName,
               'onclick' => 'clearAmountOther();',
             )
           );
@@ -506,7 +509,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
             '' => ts('- select -'),
           ) + $selectOption,
           $useRequired && $field->is_required,
-          array('price' => json_encode($priceVal), 'class' => 'crm-select2')
+          array('price' => json_encode($priceVal), 'class' => 'crm-select2', 'data-price-field-values' => json_encode($customOption))
         );
 
         // CRM-6902 - Add "max" option for a price set field
@@ -571,15 +574,22 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
    * @param bool $inactiveNeeded
    *   Include inactive options.
    * @param bool $reset
-   *   Ignore stored values\.
+   *   Discard stored values.
    *
    * @return array
    *   array of options
    */
   public static function getOptions($fieldId, $inactiveNeeded = FALSE, $reset = FALSE) {
     static $options = array();
+    if ($reset) {
+      $options = array();
+      // This would happen if the function was only called to clear the cache.
+      if (empty($fieldId)) {
+        return array();
+      }
+    }
 
-    if ($reset || empty($options[$fieldId])) {
+    if (empty($options[$fieldId])) {
       $values = array();
       CRM_Price_BAO_PriceFieldValue::getValues($fieldId, $values, 'weight', !$inactiveNeeded);
       $options[$fieldId] = $values;
@@ -591,7 +601,7 @@ class CRM_Price_BAO_PriceField extends CRM_Price_DAO_PriceField {
         if (isset($priceFieldValues['financial_type_id']) && array_key_exists($priceFieldValues['financial_type_id'], $taxRates)) {
           $options[$fieldId][$priceFieldId]['tax_rate'] = $taxRates[$priceFieldValues['financial_type_id']];
           $taxAmount = CRM_Contribute_BAO_Contribution_Utils::calculateTaxAmount($priceFieldValues['amount'], $options[$fieldId][$priceFieldId]['tax_rate']);
-          $options[$fieldId][$priceFieldId]['tax_amount'] = round($taxAmount['tax_amount'], 2);
+          $options[$fieldId][$priceFieldId]['tax_amount'] = $taxAmount['tax_amount'];
         }
       }
     }
@@ -786,9 +796,10 @@ WHERE  id IN (" . implode(',', array_keys($priceFields)) . ')';
    * @param string $displayOpt
    *   Tax display setting option.
    *
-   * @return string
-   *   tax label for custom field
+   * @param string $taxTerm
    *
+   * @return string
+   *   Tax label for custom field.
    */
   public static function getTaxLabel($opt, $valueFieldName, $displayOpt, $taxTerm) {
     if ($displayOpt == 'Do_not_show') {

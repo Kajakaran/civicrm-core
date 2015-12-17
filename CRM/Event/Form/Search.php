@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -67,8 +67,6 @@ class CRM_Event_Form_Search extends CRM_Core_Form_Search {
    * Prefix for the controller.
    */
   protected $_prefix = "event_";
-
-  protected $_defaults;
 
   /**
    * The saved search ID retrieved from the GET vars.
@@ -170,7 +168,11 @@ class CRM_Event_Form_Search extends CRM_Core_Form_Search {
    */
   public function buildQuickForm() {
     parent::buildQuickForm();
-    $this->addElement('text', 'sort_name', ts('Participant Name or Email'), CRM_Core_DAO::getAttribute('CRM_Contact_DAO_Contact', 'sort_name'));
+    $this->addSortNameField();
+
+    if (CRM_Core_Permission::check('access deleted contacts') and Civi::settings()->get('contact_undelete')) {
+      $this->addElement('checkbox', 'deleted_contacts', ts('Search in Trash') . '<br />' . ts('(deleted contacts)'));
+    }
 
     CRM_Event_BAO_Query::buildSearchForm($this);
 
@@ -197,10 +199,17 @@ class CRM_Event_Form_Search extends CRM_Core_Form_Search {
           $seatClause[] = "( participant.is_test = {$this->_formValues['participant_test']} )";
         }
         if (!empty($this->_formValues['participant_status_id'])) {
-          $seatClause[] = '( participant.status_id IN ( ' . implode(' , ', (array) $this->_formValues['participant_status_id']) . ' ) )';
+          $seatClause[] = CRM_Contact_BAO_Query::buildClause("participant.status_id", '=', $this->_formValues['participant_status_id'], 'Int');
+          if ($status = CRM_Utils_Array::value('IN', $this->_formValues['participant_status_id'])) {
+            $this->_formValues['participant_status_id'] = $status;
+          }
         }
         if (!empty($this->_formValues['participant_role_id'])) {
-          $seatClause[] = '( participant.role_id IN ( ' . implode(' , ', (array) $this->_formValues['participant_role_id']) . ' ) )';
+          $escapedRoles = array();
+          foreach ((array) $this->_formValues['participant_role_id'] as $participantRole) {
+            $escapedRoles[] = CRM_Utils_Type::escape($participantRole, 'String');
+          }
+          $seatClause[] = "( participant.role_id IN ( '" . implode("' , '", $escapedRoles) . "' ) )";
         }
 
         // CRM-15379
@@ -236,6 +245,28 @@ class CRM_Event_Form_Search extends CRM_Core_Form_Search {
       $this->addTaskMenu($tasks);
     }
 
+  }
+
+  /**
+   * Get the label for the sortName field if email searching is on.
+   *
+   * (email searching is a setting under search preferences).
+   *
+   * @return string
+   */
+  protected function getSortNameLabelWithEmail() {
+    return ts('Participant Name or Email');
+  }
+
+  /**
+   * Get the label for the sortName field if email searching is off.
+   *
+   * (email searching is a setting under search preferences).
+   *
+   * @return string
+   */
+  protected function getSortNameLabelWithOutEmail() {
+    return ts('Participant Name');
   }
 
   /**
@@ -281,7 +312,7 @@ class CRM_Event_Form_Search extends CRM_Core_Form_Search {
       $this->_formValues["participant_test"] = 0;
     }
 
-    CRM_Core_BAO_CustomValue::fixFieldValueOfTypeMemo($this->_formValues);
+    CRM_Core_BAO_CustomValue::fixCustomFieldValue($this->_formValues);
 
     $this->_queryParams = CRM_Contact_BAO_Query::convertFormValues($this->_formValues);
 
@@ -392,7 +423,11 @@ class CRM_Event_Form_Search extends CRM_Core_Form_Search {
       elseif (is_numeric($status)) {
         $statusTypes = (int) $status;
       }
-      $this->_formValues['participant_status_id'] = is_array($statusTypes) ? array_keys($statusTypes) : $statusTypes;
+
+      $this->_formValues['participant_status_id'] = is_array($statusTypes) ? array('IN' => array_keys($statusTypes)) : $statusTypes;
+    }
+    elseif ($statusTypes = CRM_Utils_Array::value('participant_status_id', $this->_formValues)) {
+      $this->_formValues['participant_status_id'] = is_array($statusTypes) ? array('IN' => $statusTypes) : $statusTypes;
     }
 
     $role = CRM_Utils_Request::retrieve('role', 'String',

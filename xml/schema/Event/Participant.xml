@@ -102,7 +102,7 @@
     <import>true</import>
     <type>varchar</type>
     <length>128</length>
-    <export>false</export>
+    <export>true</export>
     <default>NULL</default>
     <comment>Participant role ID. Implicit FK to civicrm_option_value where option_group = participant_role.</comment>
     <add>1.7</add>
@@ -279,4 +279,21 @@
     <comment>On Waiting List</comment>
     <add>4.1</add>
   </field>
+  <field>
+    <name>transferred_to_contact_id</name>
+    <uniqueName>transferred_to_contact_id</uniqueName>
+    <type>int unsigned</type>
+    <default>NULL</default>
+    <title>Transferred to Contact ID</title>
+    <headerPattern>/transfer(.?id)?/i</headerPattern>
+    <import>true</import>
+    <comment>FK to Contact ID</comment>
+    <add>4.7</add>
+  </field>
+  <foreignKey>
+    <name>transferred_to_contact_id</name>
+    <table>civicrm_contact</table>
+    <key>id</key>
+    <onDelete>SET NULL</onDelete>
+  </foreignKey>
 </table>

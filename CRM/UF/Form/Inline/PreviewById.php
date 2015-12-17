@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -55,7 +55,7 @@ class CRM_UF_Form_Inline_PreviewById extends CRM_UF_Form_AbstractPreview {
       CRM_Core_Error::fatal(ts('Permission Denied'));
     }
     $gid = CRM_Utils_Request::retrieve('id', 'Positive');
-    $fields = CRM_Core_BAO_UFGroup::getFields($gid);
+    $fields = CRM_Core_BAO_UFGroup::getFields($gid, FALSE, NULL, NULL, NULL, FALSE, NULL, FALSE, NULL, CRM_Core_Permission::CREATE, 'field_name', NULL, TRUE);
     $this->setProfile($fields);
   }
 

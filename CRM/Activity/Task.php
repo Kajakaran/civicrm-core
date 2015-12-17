@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -9,7 +9,7 @@
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -25,15 +26,12 @@
  */
 
 /**
- *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
  */
 
 /**
- * Class to represent the actions that can be performed on a group of contacts
- * used by the search forms.
+ * Class to represent the actions that can be performed on a group of contacts used by the search forms.
  */
 class CRM_Activity_Task {
   const
@@ -59,8 +57,8 @@ class CRM_Activity_Task {
   static $_optionalTasks = NULL;
 
   /**
-   * These tasks are the core set of tasks that the user can perform.
-   * on a contact / group of contacts
+   * These tasks are the core set of tasks that the user can perform
+   * on a contact / group of contacts.
    *
    * @return array
    *   the set of tasks for a group of contacts
@@ -69,17 +67,17 @@ class CRM_Activity_Task {
     if (!(self::$_tasks)) {
       self::$_tasks = array(
         1 => array(
-          'title' => ts('Delete Activities'),
+          'title' => ts('Delete activities'),
           'class' => 'CRM_Activity_Form_Task_Delete',
           'result' => FALSE,
         ),
         2 => array(
-          'title' => ts('Print Selected Rows'),
+          'title' => ts('Print selected rows'),
           'class' => 'CRM_Activity_Form_Task_Print',
           'result' => FALSE,
         ),
         3 => array(
-          'title' => ts('Export Activities'),
+          'title' => ts('Export activities'),
           'class' => array(
             'CRM_Export_Form_Select',
             'CRM_Export_Form_Map',
@@ -87,7 +85,7 @@ class CRM_Activity_Task {
           'result' => FALSE,
         ),
         4 => array(
-          'title' => ts('Batch Update Activities Via Profile'),
+          'title' => ts('Update multiple activities'),
           'class' => array(
             'CRM_Activity_Form_Task_PickProfile',
             'CRM_Activity_Form_Task_Batch',
@@ -95,7 +93,7 @@ class CRM_Activity_Task {
           'result' => FALSE,
         ),
         5 => array(
-          'title' => ts('Send Email to Contacts'),
+          'title' => ts('Email - send now'),
           'class' => array(
             'CRM_Activity_Form_Task_PickOption',
             'CRM_Activity_Form_Task_Email',
@@ -103,17 +101,17 @@ class CRM_Activity_Task {
           'result' => FALSE,
         ),
         6 => array(
-          'title' => ts('Send Reply SMS To Contacts'),
+          'title' => ts('SMS - send reply'),
           'class' => 'CRM_Activity_Form_Task_SMS',
           'result' => FALSE,
         ),
         7 => array(
-          'title' => ts('Tag Activities (assign tags)'),
+          'title' => ts('Tag - add to activities'),
           'class' => 'CRM_Activity_Form_Task_AddToTag',
           'result' => FALSE,
         ),
         8 => array(
-          'title' => ts('Untag Activities (remove tags)'),
+          'title' => ts('Tag - remove from activities'),
           'class' => 'CRM_Activity_Form_Task_RemoveFromTag',
           'result' => FALSE,
         ),
@@ -125,14 +123,14 @@ class CRM_Activity_Task {
           CRM_Core_Permission::check('access my cases and activities')
         ) {
           self::$_tasks[6] = array(
-            'title' => ts('File on Case'),
+            'title' => ts('File on case'),
             'class' => 'CRM_Activity_Form_Task_FileOnCase',
             'result' => FALSE,
           );
         }
       }
 
-      //CRM-4418, check for delete
+      // CRM-4418, check for delete
       if (!CRM_Core_Permission::check('delete activities')) {
         unset(self::$_tasks[1]);
       }
@@ -143,8 +141,7 @@ class CRM_Activity_Task {
   }
 
   /**
-   * These tasks are the core set of task titles.
-   * on activity
+   * These tasks are the core set of task titles on activity.
    *
    * @return array
    *   the set of task titles
@@ -159,8 +156,7 @@ class CRM_Activity_Task {
   }
 
   /**
-   * Show tasks selectively based on the permission level.
-   * of the user
+   * Show tasks selectively based on the permission level of the user.
    *
    * @param int $permission
    *
@@ -186,8 +182,7 @@ class CRM_Activity_Task {
   }
 
   /**
-   * These tasks are the core set of tasks that the user can perform.
-   * on activity
+   * These tasks are the core set of tasks that the user can perform on activity.
    *
    * @param int $value
    *

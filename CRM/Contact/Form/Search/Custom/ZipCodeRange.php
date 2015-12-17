@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,14 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Contact_Form_Search_Custom_ZipCodeRange extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_Interface {
+  protected $_aclFrom = NULL;
+  protected $_aclWhere = NULL;
   /**
-   * @param $formValues
+   * Class constructor.
+   *
+   * @param array $formValues
    */
   public function __construct(&$formValues) {
     parent::__construct($formValues);
@@ -130,13 +132,15 @@ address.postal_code    as postal_code
    * @return string
    */
   public function from() {
-    return "
+    $this->buildACLClause('contact_a');
+    $from = "
 FROM      civicrm_contact contact_a
 LEFT JOIN civicrm_address address ON ( address.contact_id       = contact_a.id AND
                                        address.is_primary       = 1 )
 LEFT JOIN civicrm_email   email   ON ( email.contact_id = contact_a.id AND
-                                       email.is_primary = 1 )
+                                       email.is_primary = 1 ) {$this->_aclFrom}
 ";
+    return $from;
   }
 
   /**
@@ -168,14 +172,10 @@ LEFT JOIN civicrm_email   email   ON ( email.contact_id = contact_a.id AND
       2 => array(trim($high), 'Integer'),
     );
 
+    if ($this->_aclWhere) {
+      $where .= " AND {$this->_aclWhere} ";
+    }
     return $this->whereClause($where, $params);
-  }
-
-  /**
-   * @return array
-   */
-  public function setDefaultValues() {
-    return array();
   }
 
   /**
@@ -195,6 +195,13 @@ LEFT JOIN civicrm_email   email   ON ( email.contact_id = contact_a.id AND
     else {
       CRM_Utils_System::setTitle(ts('Search'));
     }
+  }
+
+  /**
+   * @param string $tableAlias
+   */
+  public function buildACLClause($tableAlias = 'contact') {
+    list($this->_aclFrom, $this->_aclWhere) = CRM_Contact_BAO_Contact_Permission::cacheClause($tableAlias);
   }
 
 }

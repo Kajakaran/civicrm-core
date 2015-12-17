@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -63,8 +63,7 @@ class WebTest_Admin_Form_ScheduleReminderTest extends CiviSeleniumTestCase {
 
     //click on save
     $this->click('_qf_ScheduleReminders_next-bottom');
-    $this->waitForPageToLoad($this->getTimeoutMsec());
-
+    $this->waitForElementPresent("xpath=//div[@id='reminder']/div/table/tbody//tr/td[1]/div[text()='{$title}']/../../td[7]/span/a[text()='Edit']");
     $this->click("xpath=//div[@id='reminder']/div/table/tbody//tr/td[1]/div[text()='{$title}']/../../td[7]/span/a[text()='Edit']");
     $this->waitForElementPresent('_qf_ScheduleReminders_cancel-bottom');
 

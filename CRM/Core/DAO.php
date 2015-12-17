@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -30,8 +30,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 require_once 'PEAR.php';
@@ -56,10 +54,6 @@ class CRM_Core_DAO extends DB_DataObject {
     VALUE_SEPARATOR = "",
     BULK_INSERT_COUNT = 200,
     BULK_INSERT_HIGH_COUNT = 200,
-    // special value for mail bulk inserts to avoid
-    // potential duplication, assuming a smaller number reduces number of queries
-    // by some factor, so some tradeoff. CRM-8678
-    BULK_MAIL_INSERT_COUNT = 10,
     QUERY_FORMAT_WILDCARD = 1,
     QUERY_FORMAT_NO_QUOTES = 2;
 
@@ -99,15 +93,19 @@ class CRM_Core_DAO extends DB_DataObject {
    *
    * @param string $dsn
    *   The database connection string.
-   *
-   * @return void
    */
   public static function init($dsn) {
+    Civi::$statics[__CLASS__]['init'] = 1;
     $options = &PEAR::getStaticProperty('DB_DataObject', 'options');
     $options['database'] = $dsn;
     if (defined('CIVICRM_DAO_DEBUG')) {
       self::DebugLevel(CIVICRM_DAO_DEBUG);
     }
+    CRM_Core_DAO::setFactory(new CRM_Contact_DAO_Factory());
+    if (CRM_Utils_Constant::value('CIVICRM_MYSQL_STRICT', CRM_Utils_System::isDevelopment())) {
+      CRM_Core_DAO::executeQuery('SET SESSION sql_mode = STRICT_TRANS_TABLES');
+    }
+    CRM_Core_DAO::executeQuery('SET NAMES utf8');
   }
 
   /**
@@ -267,11 +265,11 @@ class CRM_Core_DAO extends DB_DataObject {
   }
 
   /**
-   * Reset the DAO object. DAO is kinda crappy in that there is an unwritten
-   * rule of one query per DAO. We attempt to get around this crappy restricrion
-   * by resetting some of DAO's internal fields. Use this with caution
+   * Reset the DAO object.
    *
-   * @return void
+   * DAO is kinda crappy in that there is an unwritten rule of one query per DAO.
+   *
+   * We attempt to get around this crappy restriction by resetting some of DAO's internal fields. Use this with caution
    */
   public function reset() {
 
@@ -330,8 +328,6 @@ class CRM_Core_DAO extends DB_DataObject {
    *
    * @param object $factory
    *   The factory application object.
-   *
-   * @return void
    */
   public static function setFactory(&$factory) {
     self::$_factory = &$factory;
@@ -341,8 +337,6 @@ class CRM_Core_DAO extends DB_DataObject {
    * Factory method to instantiate a new object from a table name.
    *
    * @param string $table
-   *
-   * @return void
    */
   public function factory($table = '') {
     if (!isset(self::$_factory)) {
@@ -355,12 +349,15 @@ class CRM_Core_DAO extends DB_DataObject {
   /**
    * Initialization for all DAO objects. Since we access DB_DO programatically
    * we need to set the links manually.
-   *
-   * @return void
    */
   public function initialize() {
     $this->_connect();
-    $this->query("SET NAMES utf8");
+    if (empty(Civi::$statics[__CLASS__]['init'])) {
+      // CRM_Core_DAO::init() must be called before CRM_Core_DAO->initialize().
+      // This occurs very early in bootstrap - error handlers may not be wired up.
+      echo "Inconsistent system initialization sequence. Premature access of (" . get_class($this) . ")";
+      CRM_Utils_System::civiExit();
+    }
   }
 
   /**
@@ -437,24 +434,34 @@ class CRM_Core_DAO extends DB_DataObject {
   }
 
   /**
+   * Save DAO object.
+   *
+   * @param bool $hook
+   *
    * @return $this
    */
-  public function save() {
+  public function save($hook = TRUE) {
     if (!empty($this->id)) {
       $this->update();
 
-      $event = new \Civi\Core\DAO\Event\PostUpdate($this);
-      \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("DAO::post-update", $event);
+      if ($hook) {
+        $event = new \Civi\Core\DAO\Event\PostUpdate($this);
+        \Civi::service('dispatcher')->dispatch("DAO::post-update", $event);
+      }
     }
     else {
       $this->insert();
 
-      $event = new \Civi\Core\DAO\Event\PostUpdate($this);
-      \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("DAO::post-insert", $event);
+      if ($hook) {
+        $event = new \Civi\Core\DAO\Event\PostUpdate($this);
+        \Civi::service('dispatcher')->dispatch("DAO::post-insert", $event);
+      }
     }
     $this->free();
 
-    CRM_Utils_Hook::postSave($this);
+    if ($hook) {
+      CRM_Utils_Hook::postSave($this);
+    }
 
     return $this;
   }
@@ -488,7 +495,7 @@ class CRM_Core_DAO extends DB_DataObject {
     $result = parent::delete($useWhere);
 
     $event = new \Civi\Core\DAO\Event\PostDelete($this, $result);
-    \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("DAO::post-delete", $event);
+    \Civi::service('dispatcher')->dispatch("DAO::post-delete", $event);
 
     return $result;
   }
@@ -571,8 +578,6 @@ class CRM_Core_DAO extends DB_DataObject {
    *   The object that we are extracting data from.
    * @param array $values
    *   (reference ) associative array of name/value pairs.
-   *
-   * @return void
    */
   public static function storeValues(&$object, &$values) {
     $fields = &$object->fields();
@@ -978,6 +983,19 @@ FROM   civicrm_domain
   }
 
   /**
+   * Returns all results as array-encoded records.
+   *
+   * @return array
+   */
+  public function fetchAll() {
+    $result = array();
+    while ($this->fetch()) {
+      $result[] = $this->toArray();
+    }
+    return $result;
+  }
+
+  /**
    * Given a DAO name, a column name and a column value, find the record and GET the value of another column in that record
    *
    * @param string $daoName
@@ -1125,8 +1143,6 @@ FROM   civicrm_domain
    *   Name of the dao object.
    * @param int $contactId
    *   Id of the contact to delete.
-   *
-   * @return void
    */
   public static function deleteEntityContact($daoName, $contactId) {
     $object = new $daoName();
@@ -2239,6 +2255,8 @@ SELECT contact_id
   }
 
   /**
+   * Get SQL where clause for SQL filter syntax input parameters.
+   *
    * SQL version of api function to assign filters to the DAO based on the syntax
    * $field => array('IN' => array(4,6,9))
    * OR
@@ -2259,22 +2277,13 @@ SELECT contact_id
    *
    * @throws Exception
    *
-   * @todo a better solution would be for the query object to apply these filters based on the
-   *  api supported format (but we don't want to risk breakage in alpha stage & query class is scary
-   * @todo @time of writing only IN & NOT IN are supported for the array style syntax (as test is
-   *  required to extend further & it may be the comments per above should be implemented. It may be
-   *  preferable to not double-banger the return context next refactor of this - but keeping the attention
-   *  in one place has some advantages as we try to extend this format
-   *
    * @return NULL|string|array
    *   a string is returned if $returnSanitisedArray is not set, otherwise and Array or NULL
    *   depending on whether it is supported as yet
    */
   public static function createSQLFilter($fieldName, $filter, $type, $alias = NULL, $returnSanitisedArray = FALSE) {
-    // http://issues.civicrm.org/jira/browse/CRM-9150 - stick with 'simple' operators for now
-    // support for other syntaxes is discussed in ticket but being put off for now
     foreach ($filter as $operator => $criteria) {
-      if (in_array($operator, self::acceptedSQLOperators())) {
+      if (in_array($operator, self::acceptedSQLOperators(), TRUE)) {
         switch ($operator) {
           // unary operators
           case 'IS NULL':

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 require_once 'Google/library/googlecart.php';
@@ -39,7 +37,9 @@ require_once 'Google/library/googlesubscription.php';
 require_once 'Google/library/googlerequest.php';
 
 /**
- * Class CRM_Core_Payment_Google
+ * Class CRM_Core_Payment_Google.
+ *
+ * Possibly not functional.
  */
 class CRM_Core_Payment_Google extends CRM_Core_Payment {
 
@@ -102,29 +102,12 @@ class CRM_Core_Payment_Google extends CRM_Core_Payment {
   }
 
   /**
-   * This function collects all the information from a web/api form and invokes
-   * the relevant payment processor specific functions to perform the transaction
-   *
-   * @param array $params
-   *   Assoc array of input parameters for this transaction.
-   *
-   * @return void
-   *   the result in an nice formatted array (or an error object)
-   * @abstract
-   */
-  public function doDirectPayment(&$params) {
-    CRM_Core_Error::fatal(ts('This function is not implemented'));
-  }
-
-  /**
    * Sets appropriate parameters for checking out to google.
    *
    * @param array $params
-   *   Name value pair of contribution datat.
+   *   Name value pair of contribution data.
    *
-   * @param $component
-   *
-   * @return void
+   * @param string $component
    */
   public function doTransferCheckout(&$params, $component) {
     $component = strtolower($component);
@@ -197,9 +180,7 @@ class CRM_Core_Payment_Google extends CRM_Core_Payment {
    * @param string $component
    *   Event/contribution.
    * @param object $cart
-   *   Object of googel cart.
-   *
-   * @return void
+   *   Object of google cart.
    */
   public function submitPostParams($params, $component, $cart) {
     $url = rtrim($this->_paymentProcessor['url_site'], '/') . '/cws/v2/Merchant/' . $this->_paymentProcessor['user_name'] . '/checkout';
@@ -313,8 +294,8 @@ class CRM_Core_Payment_Google extends CRM_Core_Payment {
     curl_setopt($ch, CURLOPT_VERBOSE, 1);
 
     //turning off the server and peer verification(TrustManager Concept).
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL'));
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL') ? 2 : 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, Civi::settings()->get('verifySSL'));
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, Civi::settings()->get('verifySSL') ? 2 : 0);
 
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_POST, 1);

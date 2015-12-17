@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -30,13 +30,15 @@
       <legend>
         {$paymentTypeLabel}
       </legend>
-      {if $form.$expressButtonName}
-        {include file= "CRM/Core/paypalexpress.tpl"}
-      {/if}
+      {crmRegion name="billing-block-pre"}
+      {/crmRegion}
       <div class="crm-section billing_mode-section {$paymentTypeName}_info-section">
         {foreach from=$paymentFields item=paymentField}
+          {assign var='name' value=$form.$paymentField.name}
           <div class="crm-section {$form.$paymentField.name}-section">
-            <div class="label">{$form.$paymentField.label}</div>
+            <div class="label">{$form.$paymentField.label}
+              {if $requiredPaymentFields.$name}<span class="crm-marker" title="{ts}This field is required.{/ts}">*</span>{/if}
+            </div>
             <div class="content">{$form.$paymentField.html}
               {if $paymentField == 'cvv2'}{* @todo move to form assignment*}
                 <span class="cvv2-icon" title="{ts}Usually the last 3-4 digits in the signature area on the back of the card.{/ts}"> </span>
@@ -51,7 +53,7 @@
       </div>
     </fieldset>
   {/if}
-  {if $billingDetailsFields|@count}
+  {if $billingDetailsFields|@count && $paymentProcessor.payment_processor_type neq 'PayPal_Express'}
     {if $profileAddressFields}
       <input type="checkbox" id="billingcheckbox" value="0">
       <label for="billingcheckbox">{ts}My billing address is the same as above{/ts}</label>
@@ -60,8 +62,11 @@
       <legend>{ts}Billing Name and Address{/ts}</legend>
       <div class="crm-section billing_name_address-section">
         {foreach from=$billingDetailsFields item=billingField}
+          {assign var='name' value=$form.$billingField.name}
           <div class="crm-section {$form.$billingField.name}-section">
-            <div class="label">{$form.$billingField.label}</div>
+            <div class="label">{$form.$billingField.label}
+              {if $requiredPaymentFields.$name}<span class="crm-marker" title="{ts}This field is required.{/ts}">*</span>{/if}
+            </div>
             {if $form.$billingField.type == 'text'}
               <div class="content">{$form.$billingField.html}</div>
             {else}
@@ -132,7 +137,7 @@
         }
       }
       if (checked) {
-        $('#billingcheckbox').prop('checked', true);
+        $('#billingcheckbox').prop('checked', true).data('crm-initial-value', true);
         if (!CRM.billing || CRM.billing.billingProfileIsHideable) {
           $('.billing_name_address-group').hide();
         }
@@ -198,8 +203,34 @@
         $('#credit_card_number').val(cc);
       });
     });
-    {/literal}
-  </script>
-{/if}
 
+    $('input[name="payment_processor_id"]').change( function() {
+      function toggleConfirmButton() {
+        var suppressSubmitButton = {/literal}"{$suppressSubmitButton}"{literal};
+        var elementObj = $('input[name="payment_processor"]');
+        if ( elementObj.attr('type') == 'hidden' ) {
+          var processorTypeId = elementObj.val( );
+        }
+        else {
+          var processorTypeId = elementObj.filter(':checked').val();
+        }
+
+        if (suppressSubmitButton) {
+          $("#crm-submit-buttons").hide();
+        }
+        else {
+          $("#crm-submit-buttons").show();
+        }
+      }
+      toggleConfirmButton();
+    });
+
+  </script>
+  {/literal}
+{/if}
 {/crmRegion}
+{crmRegion name="billing-block-post"}
+  {* Payment processors sometimes need to append something to the end of the billing block. We create a region for
+     clarity  - the plan is to move to assigning this through the payment processor to this region *}
+{/crmRegion}
+

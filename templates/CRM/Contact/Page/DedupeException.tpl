@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -44,7 +44,7 @@
 </table>
 <div class="clear"><br /></div>
 <div class="action-link">
-  {crmButton p="civicrm/contact/deduperules" q="reset=1" icon="close"}{ts}Done{/ts}{/crmButton}
+  {crmButton p="civicrm/contact/deduperules" q="reset=1" icon="times"}{ts}Done{/ts}{/crmButton}
 </div>
 
 {* process the dupe contacts *}

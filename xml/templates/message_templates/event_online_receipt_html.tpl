@@ -25,7 +25,7 @@
 
   <tr>
    <td>
-  <p>Dear {contact.display_name},</p>
+  <p>{contact.email_greeting},</p>
 
     {if $event.confirm_email_text AND (not $isOnWaitlist AND not $isRequireApproval)}
      <p>{$event.confirm_email_text|htmlize}</p>
@@ -507,8 +507,16 @@
        {/foreach}
       {/foreach}
      {/if}
-
     </table>
+    {if $event.allow_selfcancelxfer }
+     <tr>
+      <td colspan="2" {$valueStyle}>
+        {ts 1=$event.selfcancelxfer_time}You may transfer your registration to another participant or cancel your registration up to %1 hours before the event.{/ts} {if $totalAmount}{ts}Cancellations are not refundable.{/ts}{/if}<br />
+        {capture assign=selfService}{crmURL p='civicrm/event/selfsvcupdate' q="reset=1&pid=`$participant.id`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
+        <a href="{$selfService}">{ts}Click here to transfer or cancel your registration.{/ts}</a>
+      </td>
+     </tr>
+    {/if}
    </td>
   </tr>
  </table>

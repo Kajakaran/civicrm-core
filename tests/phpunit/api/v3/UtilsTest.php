@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -261,7 +261,7 @@ class api_v3_UtilsTest extends CiviUnitTestCase {
     $fields = civicrm_api3('Membership', 'getfields', array('action' => 'get'));
     _civicrm_api3_validate_fields('Membership', 'get', $params, $fields['values']);
     $this->assertEquals('2010-12-20', $params['start_date']);
-    $this->assertEquals('20101220000000', $params['membership_start_date'], 'in line ' . __LINE__);
+    $this->assertEquals('20101220000000', $params['membership_start_date']);
     $this->assertEquals('', $params['end_date']);
     $this->assertEquals('20101220000000', $params['join_date'], 'join_date not set in line ' . __LINE__);
   }
@@ -276,9 +276,9 @@ class api_v3_UtilsTest extends CiviUnitTestCase {
     );
     $fields = civicrm_api3('Event', 'getfields', array('action' => 'create'));
     _civicrm_api3_validate_fields('event', 'create', $params, $fields['values']);
-    $this->assertEquals('20101220000000', $params['start_date'], 'in line ' . __LINE__);
-    $this->assertEquals('20081015000000', $params['registration_end_date'], 'in line ' . __LINE__);
-    $this->assertEquals('', $params['end_date'], 'in line ' . __LINE__);
+    $this->assertEquals('20101220000000', $params['start_date']);
+    $this->assertEquals('20081015000000', $params['registration_end_date']);
+    $this->assertEquals('', $params['end_date']);
     $this->assertEquals('20080601000000', $params['registration_start_date']);
   }
 
@@ -312,6 +312,125 @@ class api_v3_UtilsTest extends CiviUnitTestCase {
     ));
     $this->assertEquals('Household', $result['values']['contact_type']['options']['Household']);
     $this->assertEquals('HTML', $result['values']['preferred_mail_format']['options']['HTML']);
+  }
+
+  public function basicArrayCases() {
+    $records = array(
+      array('snack_id' => 'a', 'fruit' => 'apple', 'cheese' => 'swiss'),
+      array('snack_id' => 'b', 'fruit' => 'grape', 'cheese' => 'cheddar'),
+      array('snack_id' => 'c', 'fruit' => 'apple', 'cheese' => 'cheddar'),
+      array('snack_id' => 'd', 'fruit' => 'apple', 'cheese' => 'gouda'),
+      array('snack_id' => 'e', 'fruit' => 'apple', 'cheese' => 'provolone'),
+    );
+
+    $cases[] = array(
+      $records,
+      array('version' => 3), // params
+      array('a', 'b', 'c', 'd', 'e'), // expected results
+    );
+
+    $cases[] = array(
+      $records,
+      array('version' => 3, 'fruit' => 'apple'), // params
+      array('a', 'c', 'd', 'e'), // expected results
+    );
+
+    $cases[] = array(
+      $records,
+      array('version' => 3, 'cheese' => 'cheddar'),
+      array('b', 'c'),
+    );
+
+    $cases[] = array(
+      $records,
+      array('version' => 3, 'id' => 'd'),
+      array('d'),
+    );
+
+    return $cases;
+  }
+
+  /**
+   * Make a basic API (Widget.get) which allows getting data out of a simple in-memory
+   * list of records.
+   *
+   * @param $records
+   *   The list of all records.
+   * @param $params
+   *   The filter criteria
+   * @param array $resultIds
+   *   The records which are expected to match.
+   * @dataProvider basicArrayCases
+   */
+  public function testBasicArrayGet($records, $params, $resultIds) {
+    $params['version'] = 3;
+
+    $kernel = new \Civi\API\Kernel(new \Symfony\Component\EventDispatcher\EventDispatcher());
+
+    $provider = new \Civi\API\Provider\AdhocProvider($params['version'], 'Widget');
+    $provider->addAction('get', 'access CiviCRM', function ($apiRequest) use ($records) {
+      return _civicrm_api3_basic_array_get('Widget', $apiRequest['params'], $records, 'snack_id', array('snack_id', 'fruit', 'cheese'));
+    });
+    $kernel->registerApiProvider($provider);
+
+    $r1 = $kernel->run('Widget', 'get', $params);
+    $this->assertEquals(count($resultIds), $r1['count']);
+    $this->assertEquals($resultIds, array_keys($r1['values']));
+    $this->assertEquals($resultIds, array_values(CRM_Utils_Array::collect('snack_id', $r1['values'])));
+    $this->assertEquals($resultIds, array_values(CRM_Utils_Array::collect('id', $r1['values'])));
+
+    $r2 = $kernel->run('Widget', 'get', $params + array('sequential' => 1));
+    $this->assertEquals(count($resultIds), $r2['count']);
+    $this->assertEquals($resultIds, array_values(CRM_Utils_Array::collect('snack_id', $r2['values'])));
+    $this->assertEquals($resultIds, array_values(CRM_Utils_Array::collect('id', $r2['values'])));
+
+    $r3 = $kernel->run('Widget', 'get', $params + array('options' => array('offset' => 1, 'limit' => 2)));
+    $slice = array_slice($resultIds, 1, 2);
+    $this->assertEquals(count($slice), $r3['count']);
+    $this->assertEquals($slice, array_values(CRM_Utils_Array::collect('snack_id', $r3['values'])));
+    $this->assertEquals($slice, array_values(CRM_Utils_Array::collect('id', $r3['values'])));
+  }
+
+  public function testBasicArrayGetReturn() {
+    $records = array(
+      array('snack_id' => 'a', 'fruit' => 'apple', 'cheese' => 'swiss'),
+      array('snack_id' => 'b', 'fruit' => 'grape', 'cheese' => 'cheddar'),
+      array('snack_id' => 'c', 'fruit' => 'apple', 'cheese' => 'cheddar'),
+    );
+
+    $kernel = new \Civi\API\Kernel(new \Symfony\Component\EventDispatcher\EventDispatcher());
+    $provider = new \Civi\API\Provider\AdhocProvider(3, 'Widget');
+    $provider->addAction('get', 'access CiviCRM', function ($apiRequest) use ($records) {
+      return _civicrm_api3_basic_array_get('Widget', $apiRequest['params'], $records, 'snack_id', array('snack_id', 'fruit', 'cheese'));
+    });
+    $kernel->registerApiProvider($provider);
+
+    $r1 = $kernel->run('Widget', 'get', array(
+      'version' => 3,
+      'snack_id' => 'b',
+      'return' => 'fruit',
+    ));
+    $this->assertAPISuccess($r1);
+    $this->assertEquals(array('b' => array('id' => 'b', 'fruit' => 'grape')), $r1['values']);
+
+    $r2 = $kernel->run('Widget', 'get', array(
+      'version' => 3,
+      'snack_id' => 'b',
+      'return' => array('fruit', 'cheese'),
+    ));
+    $this->assertAPISuccess($r2);
+    $this->assertEquals(array('b' => array('id' => 'b', 'fruit' => 'grape', 'cheese' => 'cheddar')), $r2['values']);
+
+    $r3 = $kernel->run('Widget', 'get', array(
+      'version' => 3,
+      'cheese' => 'cheddar',
+      'return' => array('fruit'),
+    ));
+    $this->assertAPISuccess($r3);
+    $this->assertEquals(array(
+      'b' => array('id' => 'b', 'fruit' => 'grape'),
+      'c' => array('id' => 'c', 'fruit' => 'apple'),
+    ), $r3['values']);
   }
 
 }

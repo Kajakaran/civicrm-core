@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -80,6 +80,7 @@ function civicrm_api3_generic_getList($apiRequest) {
  * @param string $entity
  * @param array $request
  * @param array $apiDefaults
+ * @param array $fields
  */
 function _civicrm_api3_generic_getList_defaults($entity, &$request, $apiDefaults, $fields) {
   $config = CRM_Core_Config::singleton();
@@ -105,7 +106,7 @@ function _civicrm_api3_generic_getList_defaults($entity, &$request, $apiDefaults
       $defaults['description_field'][] = $field;
     }
   }
-  $resultsPerPage = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'search_autocomplete_count', NULL, 10);
+  $resultsPerPage = Civi::settings()->get('search_autocomplete_count');
   if (isset($request['params']) && isset($apiDefaults['params'])) {
     $request['params'] += $apiDefaults['params'];
   }
@@ -159,6 +160,7 @@ function _civicrm_api3_generic_getlist_params(&$request) {
  *
  * @param array $result
  * @param array $request
+ * @param string $entity
  * @param array $fields
  *
  * @return array

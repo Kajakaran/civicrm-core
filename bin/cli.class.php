@@ -1,14 +1,14 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright Tech To The People http:tttp.eu (c) 2008                 |
  +--------------------------------------------------------------------+
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -16,7 +16,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -87,7 +88,7 @@ class civicrm_cli {
       return TRUE;
     }
     else {
-      trigger_error("cli.php can only be run from command line.", E_USER_ERROR);
+      die("cli.php can only be run from command line.");
     }
   }
 
@@ -110,9 +111,12 @@ class civicrm_cli {
       $result = civicrm_api($this->_entity, $this->_action, $this->_params);
     }
 
-    if ($result['is_error'] != 0) {
+    if (!empty($result['is_error'])) {
       $this->_log($result['error_message']);
       return FALSE;
+    }
+    elseif ($this->_output === 'json') {
+      echo json_encode($result, defined('JSON_PRETTY_PRINT') ? JSON_PRETTY_PRINT : 0);
     }
     elseif ($this->_output) {
       print_r($result['values']);
@@ -175,6 +179,9 @@ class civicrm_cli {
       elseif ($arg == '-o' || $arg == '--output') {
         $this->_output = TRUE;
       }
+      elseif ($arg == '-J' || $arg == '--json') {
+        $this->_output = 'json';
+      }
       elseif ($arg == '-j' || $arg == '--joblog') {
         $this->_joblog = TRUE;
       }
@@ -215,7 +222,12 @@ class civicrm_cli {
 
     $civicrm_root = dirname(__DIR__);
     chdir($civicrm_root);
-    require_once 'civicrm.config.php';
+    if (getenv('CIVICRM_SETTINGS')) {
+      require_once getenv('CIVICRM_SETTINGS');
+    }
+    else {
+      require_once 'civicrm.config.php';
+    }
     // autoload
     if (!class_exists('CRM_Core_ClassLoader')) {
       require_once $civicrm_root . '/CRM/Core/ClassLoader.php';
@@ -294,12 +306,13 @@ class civicrm_cli {
    * @return string
    */
   private function _getUsage() {
-    $out = "Usage: cli.php -e entity -a action [-u user] [-s site] [--output] [PARAMS]\n";
+    $out = "Usage: cli.php -e entity -a action [-u user] [-s site] [--output|--json] [PARAMS]\n";
     $out .= "  entity is the name of the entity, e.g. Contact, Event, etc.\n";
     $out .= "  action is the name of the action e.g. Get, Create, etc.\n";
     $out .= "  user is an optional username to run the script as\n";
     $out .= "  site is the domain name of the web site (for Drupal multi site installs)\n";
-    $out .= "  --output will print the result from the api call\n";
+    $out .= "  --output will pretty print the result from the api call\n";
+    $out .= "  --json will print the result from the api call as JSON\n";
     $out .= "  PARAMS is one or more --param=value combinations to pass to the api\n";
     return ts($out);
   }

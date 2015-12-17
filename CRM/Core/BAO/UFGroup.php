@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- *
+ * UF group BAO class.
  */
 class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
   const PUBLIC_VISIBILITY = 1,
@@ -275,8 +273,11 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
    * @param string $orderBy
    * @param null $orderProfiles
    *
+   * @param bool $eventProfile
+   *
    * @return array
-   *   the fields that belong to this ufgroup(s)
+   *   The fields that belong to this ufgroup(s)
+   * @throws \Exception
    */
   public static function getFields(
     $id,
@@ -290,7 +291,8 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
     $ctype = NULL,
     $permissionType = CRM_Core_Permission::CREATE,
     $orderBy = 'field_name',
-    $orderProfiles = NULL
+    $orderProfiles = NULL,
+    $eventProfile = FALSE
   ) {
     if (!is_array($id)) {
       $id = CRM_Utils_Type::escape($id, 'Positive');
@@ -316,6 +318,16 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
 
     if (!$showAll) {
       $query .= " AND g.is_active = 1";
+    }
+
+    $checkPermission = array(
+      array(
+        'administer CiviCRM',
+        'manage event profiles',
+      ),
+    );
+    if ($eventProfile && CRM_Core_Permission::check($checkPermission)) {
+      $skipPermission = TRUE;
     }
 
     // add permissioning for profiles only if not registration
@@ -704,8 +716,8 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
    *
    * @param int $userID
    *   The user id that we are actually editing.
-   * @param string $title
-   *   The title of the group we are interested in.
+   * @param string $name
+   *   The machine-name of the group we are interested in.
    * @param bool $register
    * @param int $action
    *   The action of the form.
@@ -714,7 +726,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
    * @return bool
    *   true if form is valid
    */
-  public static function isValid($userID, $title, $register = FALSE, $action = NULL) {
+  public static function isValid($userID, $name, $register = FALSE, $action = NULL) {
     if ($register) {
       $controller = new CRM_Core_Controller_Simple('CRM_Profile_Form_Dynamic',
         ts('Dynamic Form Creator'),
@@ -729,7 +741,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
       // make sure we have a valid group
       $group = new CRM_Core_DAO_UFGroup();
 
-      $group->title = $title;
+      $group->name = $name;
 
       if ($group->find(TRUE) && $userID) {
         $controller = new CRM_Core_Controller_Simple('CRM_Profile_Form_Dynamic', ts('Dynamic Form Creator'), $action);
@@ -941,8 +953,6 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
    * @param bool $absolute
    *   Return urls in absolute form (useful when sending an email).
    * @param null $additionalWhereClause
-   *
-   * @return void
    */
   public static function getValues(
     $cid, &$fields, &$values,
@@ -1483,8 +1493,6 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
    *   (reference) an assoc array of name/value pairs.
    * @param int $ufGroupId
    *   Ufgroup id.
-   *
-   * @return void
    */
   public static function createUFJoin(&$params, $ufGroupId) {
     $groupTypes = CRM_Utils_Array::value('uf_group_type', $params);
@@ -1616,8 +1624,6 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
    *
    * @param array $params
    *   (reference) an assoc array of name/value pairs.
-   *
-   * @return void
    */
   public static function delUFJoin(&$params) {
     $ufJoin = new CRM_Core_DAO_UFJoin();
@@ -1835,14 +1841,13 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
     $selectAttributes = array('class' => 'crm-select2', 'placeholder' => TRUE);
 
     if ($fieldName == 'image_URL' && $mode == CRM_Profile_Form::MODE_EDIT) {
-      $deleteExtra = ts('Are you sure you want to delete contact image.');
+      $deleteExtra = json_encode(ts('Are you sure you want to delete contact image.'));
       $deleteURL = array(
         CRM_Core_Action::DELETE => array(
           'name' => ts('Delete Contact Image'),
           'url' => 'civicrm/contact/image',
           'qs' => 'reset=1&id=%%id%%&gid=%%gid%%&action=delete',
-          'extra' =>
-          'onclick = "if (confirm( \'' . $deleteExtra . '\' ) ) this.href+=\'&amp;confirmed=1\'; else return false;"',
+          'extra' => 'onclick = "' . htmlspecialchars("if (confirm($deleteExtra)) this.href+='&confirmed=1'; else return false;") . '"',
         ),
       );
       $deleteURL = CRM_Core_Action::formLink($deleteURL,
@@ -2012,8 +2017,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
         $subtypeList = $subtypes;
       }
 
-      $sel = $form->add('select', $name, $title, $subtypeList, $required);
-      $sel->setMultiple(TRUE);
+      $form->add('select', $name, $title, $subtypeList, $required, array('class' => 'crm-select2', 'multiple' => TRUE));
     }
     elseif (in_array($fieldName, CRM_Contact_BAO_Contact::$_greetingTypes)) {
       //add email greeting, postal greeting, addressee, CRM-4575
@@ -2089,16 +2093,8 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
       );
     }
     elseif (substr($fieldName, 0, 4) === 'url-') {
-      $form->add('text', $name, $title,
-        array_merge(CRM_Core_DAO::getAttribute('CRM_Core_DAO_Website', 'url'),
-          array(
-            'onfocus' => "if (!this.value) {  this.value='http://';} else return false",
-            'onblur' => "if ( this.value == 'http://') {  this.value='';} else return false",
-          )
-        ), $required
-      );
-
-      $form->addRule($name, ts('Enter a valid Website.'), 'url');
+      $form->add('text', $name, $title, CRM_Core_DAO::getAttribute('CRM_Core_DAO_Website', 'url'), $required);
+      $form->addRule($name, ts('Enter a valid web address beginning with \'http://\' or \'https://\'.'), 'url');
     }
     // Note should be rendered as textarea
     elseif (substr($fieldName, -4) == 'note') {
@@ -2182,6 +2178,9 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
         $SCTDefaultValue = CRM_Core_OptionGroup::getValue('soft_credit_type', 'Gift', 'name');
       }
       $form->addElement('hidden', 'sct_default_id', $SCTDefaultValue, array('id' => 'sct_default_id'));
+    }
+    elseif ($fieldName == 'contribution_soft_credit_pcp_id') {
+      CRM_Contribute_Form_SoftCredit::addPCPFields($form, "[$rowNumber]");
     }
     elseif ($fieldName == 'currency') {
       $form->addCurrency($name, $title, $required);
@@ -2320,7 +2319,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
    * @param array $defaults
    *   Defaults array.
    * @param bool $singleProfile
-   *   True for single profile else false(batch update).
+   *   True for single profile else false(Update multiple items).
    * @param int $componentId
    *   Id for specific components like contribute, event etc.
    * @param null $component
@@ -2342,7 +2341,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
           continue;
         }
 
-        //set the field name depending upon the profile mode(single/batch)
+        //set the field name depending upon the profile mode(single/multiple)
         if ($singleProfile) {
           $fldName = $name;
         }
@@ -2704,7 +2703,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
    * @param int $id
    *   The profile id to copy.
    *
-   * @return void
+   * @return \CRM_Core_DAO
    */
   public static function copy($id) {
     $fieldsFix = array('prefix' => array('title' => ts('Copy of ')));
@@ -2763,8 +2762,6 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
    *   Contact id.
    * @param array $values
    *   Associative array of name/value pair.
-   *
-   * @return void
    */
   public static function commonSendMail($contactID, &$values) {
     if (!$contactID || !$values) {
@@ -2858,10 +2855,8 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
    *   Group id.
    * @param array $values
    * @param CRM_Core_Smarty $template
-   *
-   * @return void
    */
-  public function profileDisplay($gid, $values, $template) {
+  static public function profileDisplay($gid, $values, $template) {
     $groupTitle = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_UFGroup', $gid, 'title');
     $template->assign('grouptitle', $groupTitle);
     if (count($values)) {
@@ -3203,8 +3198,6 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
    *   An array of default values.
    *
    * @param bool $isStandalone
-   *
-   * @return void
    */
   public static function setComponentDefaults(&$fields, $componentId, $component, &$defaults, $isStandalone = FALSE) {
     if (!$componentId ||
@@ -3618,9 +3611,7 @@ SELECT  group_id
     // check for double optin
     $config = CRM_Core_Config::singleton();
     if (in_array('CiviMail', $config->enableComponents)) {
-      return CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::MAILING_PREFERENCES_NAME,
-        'profile_double_optin', NULL, FALSE
-      );
+      return Civi::settings()->get('profile_double_optin');
     }
     return FALSE;
   }
@@ -3632,9 +3623,7 @@ SELECT  group_id
     // check for add to group double optin
     $config = CRM_Core_Config::singleton();
     if (in_array('CiviMail', $config->enableComponents)) {
-      return CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::MAILING_PREFERENCES_NAME,
-        'profile_add_to_group_double_optin', NULL, FALSE
-      );
+      return Civi::settings()->get('profile_add_to_group_double_optin');
     }
     return FALSE;
   }

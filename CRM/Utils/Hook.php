@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CiviCRM_Hook
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id: $
- *
  */
 abstract class CRM_Utils_Hook {
 
@@ -44,9 +42,9 @@ abstract class CRM_Utils_Hook {
 
   // by default - place content below existing content
   const SUMMARY_BELOW = 1;
-  // pace hook content above
+  // place hook content above
   const SUMMARY_ABOVE = 2;
-  // create your own summarys
+  // create your own summaries
   const SUMMARY_REPLACE = 3;
 
   static $_nullObject = NULL;
@@ -70,6 +68,11 @@ abstract class CRM_Utils_Hook {
   private $commonCiviModules = array();
 
   /**
+   * @var CRM_Utils_Cache_Interface
+   */
+  protected $cache;
+
+  /**
    * Constructor and getter for the singleton instance.
    *
    * @param bool $fresh
@@ -81,10 +84,17 @@ abstract class CRM_Utils_Hook {
     if (self::$_singleton == NULL || $fresh) {
       $config = CRM_Core_Config::singleton();
       $class = $config->userHookClass;
-      require_once str_replace('_', DIRECTORY_SEPARATOR, $config->userHookClass) . '.php';
       self::$_singleton = new $class();
     }
     return self::$_singleton;
+  }
+
+  public function __construct() {
+    $this->cache = CRM_Utils_Cache::create(array(
+      'name' => 'hooks',
+      'type' => array('ArrayCache'),
+      'prefetch' => 1,
+    ));
   }
 
   /**
@@ -189,51 +199,60 @@ abstract class CRM_Utils_Hook {
     // to reproduce the issue are pretty intricate.
     $result = array();
 
-    if ($civiModules !== NULL) {
-      foreach ($civiModules as $module) {
-        $fnName = "{$module}_{$fnSuffix}";
-        if (function_exists($fnName)) {
-          $fResult = array();
-          switch ($numParams) {
-            case 0:
-              $fResult = $fnName();
-              break;
-
-            case 1:
-              $fResult = $fnName($arg1);
-              break;
-
-            case 2:
-              $fResult = $fnName($arg1, $arg2);
-              break;
-
-            case 3:
-              $fResult = $fnName($arg1, $arg2, $arg3);
-              break;
-
-            case 4:
-              $fResult = $fnName($arg1, $arg2, $arg3, $arg4);
-              break;
-
-            case 5:
-              $fResult = $fnName($arg1, $arg2, $arg3, $arg4, $arg5);
-              break;
-
-            case 6:
-              $fResult = $fnName($arg1, $arg2, $arg3, $arg4, $arg5, $arg6);
-              break;
-
-            default:
-              CRM_Core_Error::fatal(ts('Invalid hook invocation'));
-              break;
-          }
-
-          if (!empty($fResult) &&
-            is_array($fResult)
-          ) {
-            $result = array_merge($result, $fResult);
+    $fnNames = $this->cache->get($fnSuffix);
+    if (!is_array($fnNames)) {
+      $fnNames = array();
+      if ($civiModules !== NULL) {
+        foreach ($civiModules as $module) {
+          $fnName = "{$module}_{$fnSuffix}";
+          if (function_exists($fnName)) {
+            $fnNames[] = $fnName;
           }
         }
+        $this->cache->set($fnSuffix, $fnNames);
+      }
+    }
+
+    foreach ($fnNames as $fnName) {
+      $fResult = array();
+      switch ($numParams) {
+        case 0:
+          $fResult = $fnName();
+          break;
+
+        case 1:
+          $fResult = $fnName($arg1);
+          break;
+
+        case 2:
+          $fResult = $fnName($arg1, $arg2);
+          break;
+
+        case 3:
+          $fResult = $fnName($arg1, $arg2, $arg3);
+          break;
+
+        case 4:
+          $fResult = $fnName($arg1, $arg2, $arg3, $arg4);
+          break;
+
+        case 5:
+          $fResult = $fnName($arg1, $arg2, $arg3, $arg4, $arg5);
+          break;
+
+        case 6:
+          $fResult = $fnName($arg1, $arg2, $arg3, $arg4, $arg5, $arg6);
+          break;
+
+        default:
+          CRM_Core_Error::fatal(ts('Invalid hook invocation'));
+          break;
+      }
+
+      if (!empty($fResult) &&
+        is_array($fResult)
+      ) {
+        $result = array_merge($result, $fResult);
       }
     }
 
@@ -276,8 +295,8 @@ abstract class CRM_Utils_Hook {
    */
   public static function pre($op, $objectName, $id, &$params) {
     $event = new \Civi\Core\Event\PreEvent($op, $objectName, $id, $params);
-    \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("hook_civicrm_pre", $event);
-    \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("hook_civicrm_pre::$objectName", $event);
+    \Civi::service('dispatcher')->dispatch("hook_civicrm_pre", $event);
+    \Civi::service('dispatcher')->dispatch("hook_civicrm_pre::$objectName", $event);
     return self::singleton()
       ->invoke(4, $op, $objectName, $id, $params, self::$_nullObject, self::$_nullObject, 'civicrm_pre');
   }
@@ -300,8 +319,8 @@ abstract class CRM_Utils_Hook {
    */
   public static function post($op, $objectName, $objectId, &$objectRef) {
     $event = new \Civi\Core\Event\PostEvent($op, $objectName, $objectId, $objectRef);
-    \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("hook_civicrm_post", $event);
-    \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("hook_civicrm_post::$objectName", $event);
+    \Civi::service('dispatcher')->dispatch("hook_civicrm_post", $event);
+    \Civi::service('dispatcher')->dispatch("hook_civicrm_post::$objectName", $event);
     return self::singleton()
       ->invoke(4, $op, $objectName, $objectId, $objectRef, self::$_nullObject, self::$_nullObject, 'civicrm_post');
   }
@@ -382,25 +401,6 @@ abstract class CRM_Utils_Hook {
       self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject,
       'civicrm_postProcess'
     );
-  }
-
-  /**
-   * This hook is invoked during all CiviCRM form validation. An array of errors
-   * detected is returned. Else we assume validation succeeded.
-   *
-   * @param string $formName
-   *   The name of the form.
-   * @param array &$fields the POST parameters as filtered by QF
-   * @param array &$files the FILES parameters as sent in by POST
-   * @param array &$form the form object
-   *
-   * @return mixed
-   *   formRule hooks return a boolean or
-   *                           an array of error messages which display a QF Error
-   */
-  public static function validate($formName, &$fields, &$files, &$form) {
-    return self::singleton()
-      ->invoke(4, $formName, $fields, $files, $form, self::$_nullObject, self::$_nullObject, 'civicrm_validate');
   }
 
   /**
@@ -640,6 +640,7 @@ abstract class CRM_Utils_Hook {
    *   The contactID for whom the dashboard is being rendered.
    *
    * @return null
+   * @deprecated Use tabset() instead.
    */
   public static function tabs(&$tabs, $contactID) {
     return self::singleton()->invoke(2, $tabs, $contactID,
@@ -803,7 +804,7 @@ abstract class CRM_Utils_Hook {
    * @param array $tasks
    *   The current set of tasks for that custom field.
    *   You can add/remove existing tasks.
-   *   Each task needs to have a title (eg 'title'  => ts( 'Add Contacts to Group')) and a class
+   *   Each task needs to have a title (eg 'title'  => ts( 'Group - add contacts')) and a class
    *   (eg 'class'  => 'CRM_Contact_Form_Task_AddToGroup').
    *   Optional result (boolean) may also be provided. Class can be an array of classes (not sure what that does :( ).
    *   The key for new Task(s) should not conflict with the keys for core tasks of that $objectType, which can be
@@ -999,6 +1000,21 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
+   * This hook is called after getting the content of the mail and before tokenizing it.
+   *
+   * @param array $content
+   *   Array fields include: html, text, subject
+   *
+   * @return mixed
+   */
+  public static function alterMailContent(&$content) {
+    return self::singleton()->invoke(1, $content,
+      self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject,
+      'civicrm_alterMailContent'
+    );
+  }
+
+  /**
    * This hook is called when rendering the Manage Case screen.
    *
    * @param int $caseID
@@ -1188,7 +1204,7 @@ abstract class CRM_Utils_Hook {
    *                  fieldHeaders    - field headers
    *                  fields          - import fields
    *
-   * @return void
+   * @return mixed
    */
   public static function import($object, $usage, &$objectRef, &$params) {
     return self::singleton()->invoke(4, $object, $usage, $objectRef, $params,
@@ -1265,8 +1281,8 @@ abstract class CRM_Utils_Hook {
    * @param array $selector
    *   the selector object. Allows you access to the context of the search
    *
-   * @return void
-   *   modify the header and values object to pass the data u need
+   * @return mixed
+   *   modify the header and values object to pass the data you need
    */
   public static function searchColumns($objectName, &$headers, &$rows, &$selector) {
     return self::singleton()->invoke(4, $objectName, $headers, $rows, $selector,
@@ -1627,13 +1643,13 @@ abstract class CRM_Utils_Hook {
     self::singleton()
       ->invoke(2, $exception, $request, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, 'civicrm_unhandled_exception');
     // == 4.4 ==
-    //$event = new stdClass();
-    //$event->exception = $exception;
-    //CRM_Core_LegacyErrorHandler::handleException($event);
+    // $event = new stdClass();
+    // $event->exception = $exception;
+    // CRM_Core_LegacyErrorHandler::handleException($event);
 
     // == 4.5+ ==
     $event = new \Civi\Core\Event\UnhandledExceptionEvent($exception, self::$_nullObject);
-    \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("hook_civicrm_unhandled_exception", $event);
+    \Civi::service('dispatcher')->dispatch("hook_civicrm_unhandled_exception", $event);
   }
 
   /**
@@ -1803,7 +1819,7 @@ abstract class CRM_Utils_Hook {
    * @param int $otherCaseId
    * @param bool $changeClient
    *
-   * @return void
+   * @return mixed
    */
   public static function pre_case_merge($mainContactId, $mainCaseId = NULL, $otherContactId = NULL, $otherCaseId = NULL, $changeClient = FALSE) {
     return self::singleton()
@@ -1819,7 +1835,7 @@ abstract class CRM_Utils_Hook {
    * @param int $otherCaseId
    * @param bool $changeClient
    *
-   * @return void
+   * @return mixed
    */
   public static function post_case_merge($mainContactId, $mainCaseId = NULL, $otherContactId = NULL, $otherCaseId = NULL, $changeClient = FALSE) {
     return self::singleton()
@@ -1839,7 +1855,7 @@ abstract class CRM_Utils_Hook {
    *
    * @return mixed
    */
-  public static function alterDisplayName($displayName, $contactId, $dao) {
+  public static function alterDisplayName(&$displayName, $contactId, $dao) {
     return self::singleton()->invoke(3,
       $displayName, $contactId, $dao, self::$_nullObject, self::$_nullObject,
       self::$_nullObject, 'civicrm_contact_get_displayname'
@@ -1880,12 +1896,13 @@ abstract class CRM_Utils_Hook {
    * This hook fires whenever a record in a case changes.
    *
    * @param \Civi\CCase\Analyzer $analyzer
+   *   A bundle of data about the case (such as the case and activity records).
    */
   public static function caseChange(\Civi\CCase\Analyzer $analyzer) {
     $event = new \Civi\CCase\Event\CaseChangeEvent($analyzer);
-    \Civi\Core\Container::singleton()->get('dispatcher')->dispatch("hook_civicrm_caseChange", $event);
+    \Civi::service('dispatcher')->dispatch("hook_civicrm_caseChange", $event);
 
-    return self::singleton()->invoke(1, $angularModules,
+    self::singleton()->invoke(1, $analyzer,
       self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject,
       'civicrm_caseChange'
     );
@@ -1917,6 +1934,31 @@ abstract class CRM_Utils_Hook {
   }
 
   /**
+   * Modify the CiviCRM container - add new services, parameters, extensions, etc.
+   *
+   * @code
+   * use Symfony\Component\Config\Resource\FileResource;
+   * use Symfony\Component\DependencyInjection\Definition;
+   *
+   * function mymodule_civicrm_container($container) {
+   *   $container->addResource(new FileResource(__FILE__));
+   *   $container->setDefinition('mysvc', new Definition('My\Class', array()));
+   * }
+   * @endcode
+   *
+   * Tip: The container configuration will be compiled/cached. The default cache
+   * behavior is aggressive. When you first implement the hook, be sure to
+   * flush the cache. Additionally, you should relax caching during development.
+   * In `civicrm.settings.php`, set define('CIVICRM_CONTAINER_CACHE', 'auto').
+   *
+   * @param \Symfony\Component\DependencyInjection\ContainerBuilder $container
+   * @see http://symfony.com/doc/current/components/dependency_injection/index.html
+   */
+  public static function container(\Symfony\Component\DependencyInjection\ContainerBuilder $container) {
+    self::singleton()->invoke(1, $container, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, 'civicrm_container');
+  }
+
+  /**
    * @param array <CRM_Core_FileSearchInterface> $fileSearches
    * @return mixed
    */
@@ -1924,6 +1966,65 @@ abstract class CRM_Utils_Hook {
     return self::singleton()->invoke(1, $fileSearches,
       self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject,
       'civicrm_fileSearches'
+    );
+  }
+
+  /**
+   * Check system status.
+   *
+   * @param array $messages
+   *   Array<CRM_Utils_Check_Message>. A list of messages regarding system status.
+   * @return mixed
+   */
+  public static function check(&$messages) {
+    return self::singleton()
+      ->invoke(1, $messages, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, 'civicrm_check');
+  }
+
+  /**
+   * This hook is called when a query string of the CSV Batch export is generated.
+   *
+   * @param string $query
+   *
+   * @return mixed
+   */
+  public static function batchQuery(&$query) {
+    return self::singleton()->invoke(1, $query, self::$_nullObject,
+      self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject,
+      'civicrm_batchQuery'
+    );
+  }
+
+  /**
+   * This hook is called when the entries of the CSV Batch export are mapped.
+   *
+   * @param array $results
+   * @param array $items
+   *
+   * @return mixed
+   */
+  public static function batchItems(&$results, &$items) {
+    return self::singleton()->invoke(2, $results, $items,
+      self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject,
+      'civicrm_batchItems'
+    );
+  }
+
+  /**
+   * This hook is called when core resources are being loaded
+   *
+   * @see CRM_Core_Resources::coreResourceList
+   *
+   * @param array $list
+   * @param string $region
+   */
+  public static function coreResourceList(&$list, $region) {
+    // First allow the cms integration to add to the list
+    CRM_Core_Config::singleton()->userSystem->appendCoreResources($list);
+
+    self::singleton()->invoke(2, $list, $region,
+      self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject,
+      'civicrm_coreResourceList'
     );
   }
 

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -174,24 +174,25 @@ class WebTest_Contribute_OnlineMultiplePaymentProcessorTest extends CiviSelenium
     $xpath = "xpath=//label[text() = '{$payLaterText}']/preceding-sibling::input[1]";
     $this->click($xpath);
 
-    $this->clickLink("_qf_Main_upload-bottom", "_qf_Confirm_next-bottom");
+    $this->waitForAjaxContent();
+    $this->click("_qf_Main_upload-bottom");
+    $this->waitForElementPresent("xpath=//div[@class='bold pay_later_receipt-section']");
 
     $payLaterInstructionsText = "Pay later instructions $hash";
     $this->verifyText("xpath=//div[@class='bold pay_later_receipt-section']/p", $payLaterInstructionsText);
-
     $this->click("_qf_Confirm_next-bottom");
-    $this->waitForPageToLoad($this->getTimeoutMsec());
 
-    $this->verifyText("xpath=//div[@id='help']/div/p", $payLaterInstructionsText);
+    $this->waitForElementPresent("xpath=//div[@class='help']/div/p");
+    $this->verifyText("xpath=//div[@class='help']/div/p", $payLaterInstructionsText);
 
     //login to check contribution
     $this->openCiviPage("contribute/search", "reset=1", 'contribution_date_low');
-
+    $this->waitForAjaxContent();
     $this->type('sort_name', "$lastName $firstName");
     $this->check('contribution_test');
     $this->click('_qf_Search_refresh');
-    $this->waitForElementPresent("xpath=//div[@id='contributionSearch']/table/tbody/tr[1]/td[11]/span/a[text()='View']");
-    $this->click("xpath=//div[@id='contributionSearch']/table/tbody/tr[1]/td[11]/span/a[text()='View']");
+    $this->waitForElementPresent("xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[10]/span//a[text()='View']");
+    $this->click("xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[10]/span//a[text()='View']");
     $this->waitForElementPresent("_qf_ContributionView_cancel-bottom");
     $expected = array(
       'From' => "{$firstName} {$lastName}",

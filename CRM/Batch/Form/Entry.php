@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * This class provides the functionality for batch entry for contributions/memberships
+ * This class provides the functionality for batch entry for contributions/memberships.
  */
 class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
@@ -64,7 +62,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
   public $_params;
 
-  public $_membershipId = NULL;
   /**
    * When not to reset sort_name.
    */
@@ -87,8 +84,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
   /**
    * Build all the data structures needed to build the form.
-   *
-   * @return void
    */
   public function preProcess() {
     $this->_batchId = CRM_Utils_Request::retrieve('id', 'Positive', $this, TRUE);
@@ -115,9 +110,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
   /**
    * Build the form object.
-   *
-   *
-   * @return void
    */
   public function buildQuickForm() {
     if (!$this->_profileId) {
@@ -260,7 +252,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
     $buttonName = $this->controller->getButtonName('submit');
 
     if ($suppressFields && $buttonName != '_qf_Entry_next') {
-      CRM_Core_Session::setStatus(ts("File or Autocomplete-Select type field(s) in the selected profile are not supported for Batch Update."), ts('Some Fields Excluded'), 'info');
+      CRM_Core_Session::setStatus(ts("File or Autocomplete-Select type field(s) in the selected profile are not supported for Update multiple records."), ts('Some Fields Excluded'), 'info');
     }
   }
 
@@ -280,14 +272,18 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
   public static function formRule($params, $files, $self) {
     $errors = array();
     $batchTypes = CRM_Core_Pseudoconstant::get('CRM_Batch_DAO_Batch', 'type_id', array('flip' => 1), 'validate');
+    $fields = array(
+      'total_amount' => ts('Amount'),
+      'financial_type' => ts('Financial Type'),
+      'payment_instrument' => ts('Payment Method'),
+    );
 
     //CRM-16480 if contact is selected, validate financial type and amount field.
     foreach ($params['field'] as $key => $value) {
-      if (!empty($params['primary_contact_id'][$key]) && empty($value['total_amount'])) {
-        $errors["field[$key][total_amount]"] = ts('Amount is a required field.');
-      }
-      if (!empty($params['primary_contact_id'][$key]) && empty($value['financial_type'])) {
-        $errors["field[$key][financial_type]"] = ts('Financial Type is a required field.');
+      foreach ($fields as $field => $label) {
+        if (!empty($params['primary_contact_id'][$key]) && empty($value[$field])) {
+          $errors["field[$key][$field]"] = ts('%1 is a required field.', array(1 => $label));
+        }
       }
     }
 
@@ -319,15 +315,17 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
     }
     if ($self->_batchInfo['type_id'] == $batchTypes['Pledge Payment']) {
       foreach (array_unique($params["open_pledges"]) as $value) {
-        $duplicateRows = array_keys($params["open_pledges"], $value);
-        if (count($duplicateRows) > 1) {
+        if (!empty($value)) {
+          $duplicateRows = array_keys($params["open_pledges"], $value);
+        }
+        if (!empty($duplicateRows) && count($duplicateRows) > 1) {
           foreach ($duplicateRows as $key) {
             $errors["open_pledges[$key]"] = ts('You can not record two payments for the same pledge in a single batch.');
           }
         }
       }
     }
-    if ($batchTotal != $self->_batchInfo['total']) {
+    if ((string) $batchTotal != $self->_batchInfo['total']) {
       $self->assign('batchAmountMismatch', TRUE);
       $errors['_qf_defaults'] = ts('Total for amounts entered below does not match the expected batch total.');
     }
@@ -351,9 +349,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
   /**
    * Set default values for the form.
-   *
-   *
-   * @return void
    */
   public function setDefaultValues() {
     if (empty($this->_fields)) {
@@ -392,9 +387,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
   /**
    * Process the form after the input has been submitted and validated.
-   *
-   *
-   * @return void
    */
   public function postProcess() {
     $params = $this->controller->exportValues($this->_name);
@@ -431,8 +423,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    * @param array $params
    *   Associated array of submitted values.
    *
-   *
-   * @return void
+   * @return bool
    */
   private function processContribution(&$params) {
     $dates = array(
@@ -472,6 +463,18 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
           }
           else {
             $value['soft_credit'][$key]['soft_credit_type_id'] = CRM_Core_OptionGroup::getDefaultValue("soft_credit_type");
+          }
+        }
+
+        // Build PCP params
+        if (!empty($params['pcp_made_through_id'][$key])) {
+          $value['pcp']['pcp_made_through_id'] = $params['pcp_made_through_id'][$key];
+          $value['pcp']['pcp_display_in_roll'] = !empty($params['pcp_display_in_roll'][$key]);
+          if (!empty($params['pcp_roll_nickname'][$key])) {
+            $value['pcp']['pcp_roll_nickname'] = $params['pcp_roll_nickname'][$key];
+          }
+          if (!empty($params['pcp_personal_note'][$key])) {
+            $value['pcp']['pcp_personal_note'] = $params['pcp_personal_note'][$key];
           }
         }
 
@@ -515,12 +518,18 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
         $lineItem = array();
         CRM_Price_BAO_PriceSet::processAmount($this->_priceSet['fields'], $value, $lineItem[$priceSetId]);
 
-        //unset amount level since we always use quick config price set
+        // @todo - stop setting amount level in this function & call the CRM_Price_BAO_PriceSet::getAmountLevel
+        // function to get correct amount level consistently. Remove setting of the amount level in
+        // CRM_Price_BAO_PriceSet::processAmount. Extend the unit tests in CRM_Price_BAO_PriceSetTest
+        // to cover all variants.
         unset($value['amount_level']);
 
         //CRM-11529 for back office transactions
         //when financial_type_id is passed in form, update the
         //line items with the financial type selected in form
+        // @todo - create a price set or price field per financial type & simply choose the appropriate
+        // price field rather than working around the fact that each price_field is supposed to have a financial
+        // type & we are allowing that to be overridden.
         if (!empty($value['financial_type_id']) && !empty($lineItem[$priceSetId])) {
           foreach ($lineItem[$priceSetId] as &$values) {
             $values['financial_type_id'] = $value['financial_type_id'];
@@ -587,6 +596,9 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
           $domainEmail = "$domainEmail[0] <$domainEmail[1]>";
           $value['from_email_address'] = $domainEmail;
           $value['contribution_id'] = $contribution->id;
+          if (!empty($value['soft_credit'])) {
+            $value = array_merge($value, CRM_Contribute_BAO_ContributionSoft::getSoftContribution($contribution->id));
+          }
           CRM_Contribute_Form_AdditionalInfo::emailReceipt($this, $value);
         }
       }
@@ -617,7 +629,7 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
       'reminder_date',
     );
 
-    // get the price set associated with offline memebership
+    // get the price set associated with offline membership
     $priceSetId = CRM_Core_DAO::getFieldValue('CRM_Price_DAO_PriceSet', 'default_membership_type_amount', 'id', 'name');
     $this->_priceSet = $priceSets = current(CRM_Price_BAO_PriceSet::getSetDetail($priceSetId));
 
@@ -781,17 +793,29 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
 
         $value['is_renew'] = FALSE;
         if (!empty($params['member_option']) && CRM_Utils_Array::value($key, $params['member_option']) == 2) {
+
+          // The following parameter setting may be obsolete.
           $this->_params = $params;
           $value['is_renew'] = TRUE;
-          $membership = CRM_Member_BAO_Membership::renewMembershipFormWrapper(
-            $value['contact_id'],
-            $value['membership_type_id'],
-            FALSE, $this, NULL, NULL,
-            $value['custom']
+          $isPayLater = CRM_Utils_Array::value('is_pay_later', $params);
+          $campaignId = NULL;
+          if (isset($this->_values) && is_array($this->_values) && !empty($this->_values)) {
+            $campaignId = CRM_Utils_Array::value('campaign_id', $this->_params);
+            if (!array_key_exists('campaign_id', $this->_params)) {
+              $campaignId = CRM_Utils_Array::value('campaign_id', $this->_values);
+            }
+          }
+
+          list($membership) = CRM_Member_BAO_Membership::renewMembership(
+            $value['contact_id'], $value['membership_type_id'], FALSE,
+            NULL, NULL, $value['custom'], NULL, NULL, FALSE,
+            NULL, NULL, $isPayLater, $campaignId
           );
 
           // make contribution entry
           $contrbutionParams = array_merge($value, array('membership_id' => $membership->id));
+          // @todo - calling this from here is pretty hacky since it is called from membership.create anyway
+          // This form should set the correct params & not call this fn directly.
           CRM_Member_BAO_Membership::recordMembershipContribution($contrbutionParams);
         }
         else {
@@ -842,9 +866,6 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
    *
    * @param array $value
    *   Associated array of submitted values.
-   *
-   *
-   * @return void
    */
   private function updateContactInfo(&$value) {
     $value['preserveDBName'] = $this->_preserveDefault;
@@ -858,9 +879,10 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
   }
 
   /**
-   * Function exists purely for unit testing purposes. If you feel tempted to use this in live code
-   * then it probably means there is some functionality that needs to be moved
-   * out of the form layer
+   * Function exists purely for unit testing purposes.
+   *
+   * If you feel tempted to use this in live code then it probably means there is some functionality
+   * that needs to be moved out of the form layer
    *
    * @param array $params
    *
@@ -871,9 +893,10 @@ class CRM_Batch_Form_Entry extends CRM_Core_Form {
   }
 
   /**
-   * Function exists purely for unit testing purposes. If you feel tempted to use this in live code
-   * then it probably means there is some functionality that needs to be moved
-   * out of the form layer
+   * Function exists purely for unit testing purposes.
+   *
+   * If you feel tempted to use this in live code then it probably means there is some functionality
+   * that needs to be moved out of the form layer.
    *
    * @param array $params
    *

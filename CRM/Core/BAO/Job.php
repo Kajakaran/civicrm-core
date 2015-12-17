@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -126,6 +126,9 @@ class CRM_Core_BAO_Job extends CRM_Core_DAO_Job {
    * Trim job table on a regular basis to keep it at a good size.
    *
    * CRM-10513
+   *
+   * @param int $maxEntriesToKeep
+   * @param int $minDaysToKeep
    */
   public static function cleanup($maxEntriesToKeep = 1000, $minDaysToKeep = 30) {
     // Prevent the job log from getting too big

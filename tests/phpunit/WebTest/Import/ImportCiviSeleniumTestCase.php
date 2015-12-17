@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -362,7 +362,7 @@ class ImportCiviSeleniumTestCase extends CiviSeleniumTestCase {
     $this->waitForPageToLoad($this->getTimeoutMsec());
 
     // Check confirmation alert.
-    $this->assertTrue((bool) preg_match("/^Are you sure you want to Import now[\s\S]$/", $this->getConfirmation()));
+    $this->assertTrue((bool) preg_match("/^Backing up your database before importing is recommended, as there is no Undo for this. Are you sure you want to Import now[\s\S]$/", $this->getConfirmation()));
     $this->chooseOkOnNextConfirmation();
     $this->waitForPageToLoad($this->getTimeoutMsec());
 
@@ -458,19 +458,19 @@ class ImportCiviSeleniumTestCase extends CiviSeleniumTestCase {
   public function _getImportComponentContactType($component, $contactType) {
     $importComponentMode = array(
       'Event' => array(
-        'Individual' => 'CIVICRM_QFID_1_8',
-        'Household' => 'CIVICRM_QFID_2_10',
-        'Organization' => 'CIVICRM_QFID_4_12',
+        'Individual' => 'CIVICRM_QFID_1_20',
+        'Household' => 'CIVICRM_QFID_2_22',
+        'Organization' => 'CIVICRM_QFID_4_24',
       ),
       'Contribution' => array(
-        'Individual' => 'CIVICRM_QFID_1_6',
-        'Household' => 'CIVICRM_QFID_2_8',
-        'Organization' => 'CIVICRM_QFID_4_10',
+        'Individual' => 'CIVICRM_QFID_1_18',
+        'Household' => 'CIVICRM_QFID_2_20',
+        'Organization' => 'CIVICRM_QFID_4_22',
       ),
       'Membership' => array(
-        'Individual' => 'CIVICRM_QFID_1_6',
-        'Household' => 'CIVICRM_QFID_2_8',
-        'Organization' => 'CIVICRM_QFID_4_10',
+        'Individual' => 'CIVICRM_QFID_1_18',
+        'Household' => 'CIVICRM_QFID_2_20',
+        'Organization' => 'CIVICRM_QFID_4_22',
       ),
     );
 

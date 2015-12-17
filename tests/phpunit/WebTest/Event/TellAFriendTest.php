@@ -1,7 +1,7 @@
 <?php
 /*
    +--------------------------------------------------------------------+
-   | CiviCRM version 4.6                                                |
+   | CiviCRM version 4.7                                                |
    +--------------------------------------------------------------------+
    | Copyright CiviCRM LLC (c) 2004-2015                                |
    +--------------------------------------------------------------------+
@@ -211,7 +211,7 @@ class WebTest_Event_TellAFriendTest extends CiviSeleniumTestCase {
     $this->type("address_1_street_address", $streetAddress);
     $this->type("address_1_city", "San Francisco");
     $this->type("address_1_postal_code", "94117");
-    $this->select('address_1_country_id', 'United States');
+    $this->select('address_1_country_id', 'UNITED STATES');
     $this->select("address_1_state_province_id", "value=1004");
     $this->type("email_1_email", "info@civicrm.org");
 
@@ -238,7 +238,7 @@ class WebTest_Event_TellAFriendTest extends CiviSeleniumTestCase {
       $this->assertChecked("is_multiple_registrations");
     }
 
-    $this->click('intro_text-plain');
+    $this->click("xpath=//div[@id='registration_screen']/table/tbody/tr[1]/td[2]/div[@class='replace-plain']");
     $this->fillRichTextField("intro_text", $registerIntro);
 
     // enable confirmation email

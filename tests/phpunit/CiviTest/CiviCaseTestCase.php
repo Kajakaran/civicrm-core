@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -48,12 +48,6 @@ class CiviCaseTestCase extends CiviUnitTestCase {
   public function setUp() {
     parent::setUp();
 
-    /** @var $hooks \CRM_Utils_Hook_UnitTests */
-    $hooks = \CRM_Utils_Hook::singleton();
-    $hooks->setHook('civicrm_caseTypes', array($this, 'hook_caseTypes'));
-    \CRM_Case_XMLRepository::singleton(TRUE);
-    \CRM_Case_XMLProcessor::flushStaticCaches();
-
     // CRM-9404 - set-up is a bit cumbersome but had to put something in place to set up activity types & case types
     //. Using XML was causing breakage as id numbers were changing over time
     // & was really hard to troubleshoot as involved truncating option_value table to mitigate this & not leaving DB in a
@@ -99,6 +93,7 @@ class CiviCaseTestCase extends CiviUnitTestCase {
       'civicrm_managed',
       'civicrm_relationship',
       'civicrm_relationship_type',
+      'civicrm_uf_match',
     );
 
     $this->quickCleanup($this->tablesToTruncate);
@@ -111,6 +106,12 @@ class CiviCaseTestCase extends CiviUnitTestCase {
     // case is not enabled by default
     $enableResult = CRM_Core_BAO_ConfigSetting::enableComponent('CiviCase');
     $this->assertTrue($enableResult, 'Cannot enable CiviCase in line ' . __LINE__);
+
+    /** @var $hooks \CRM_Utils_Hook_UnitTests */
+    $hooks = \CRM_Utils_Hook::singleton();
+    $hooks->setHook('civicrm_caseTypes', array($this, 'hook_caseTypes'));
+    \CRM_Case_XMLRepository::singleton(TRUE);
+    \CRM_Case_XMLProcessor::flushStaticCaches();
 
     // create a logged in USER since the code references it for source_contact_id
     $this->createLoggedInUser();

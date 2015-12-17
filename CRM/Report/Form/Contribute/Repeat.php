@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -194,14 +194,12 @@ class CRM_Report_Form_Contribute_Repeat extends CRM_Report_Form {
           'receive_date1' => array(
             'title' => ts('Initial Date Range'),
             'default' => 'previous.year',
-            'type' => CRM_Utils_Type::T_DATE,
             'operatorType' => CRM_Report_Form::OP_DATE,
             'name' => 'receive_date',
           ),
           'receive_date2' => array(
             'title' => ts('Second Date Range'),
             'default' => 'this.year',
-            'type' => CRM_Utils_Type::T_DATE,
             'operatorType' => CRM_Report_Form::OP_DATE,
             'name' => 'receive_date',
           ),
@@ -220,7 +218,7 @@ class CRM_Report_Form_Contribute_Repeat extends CRM_Report_Form {
           'financial_type_id' => array(
             'title' => ts('Financial Type'),
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
-            'options' => CRM_Contribute_PseudoConstant::financialType(),
+            'options' => CRM_Financial_BAO_FinancialType::getAvailableFinancialTypes(),
           ),
           'contribution_status_id' => array(
             'title' => ts('Contribution Status'),
@@ -358,7 +356,21 @@ LEFT JOIN civicrm_temp_civireport_repeat1 {$this->_aliases['civicrm_contribution
 LEFT JOIN civicrm_temp_civireport_repeat2 {$this->_aliases['civicrm_contribution']}2
        ON $fromAlias.$fromCol = {$this->_aliases['civicrm_contribution']}2.$contriCol";
   }
-
+  /**
+   * @param string $replaceAliasWith
+   *
+   * @return mixed|string
+   */
+  public function fromContribution($replaceAliasWith = 'contribution1') {
+    $from = " FROM civicrm_contribution {$replaceAliasWith} ";
+    $temp = $this->_aliases['civicrm_contribution'];
+    $this->_aliases['civicrm_contribution'] = $replaceAliasWith;
+    $this->_from = $from;
+    $from .= (string) $this->getPermissionedFTQuery($this, 'civicrm_line_item_report', TRUE);
+    $this->_aliases['civicrm_contribution'] = $temp;
+    $this->_where = '';
+    return $from;
+  }
   /**
    * @param string $replaceAliasWith
    *
@@ -622,32 +634,15 @@ LEFT JOIN civicrm_temp_civireport_repeat2 {$this->_aliases['civicrm_contribution
    */
   public function statistics(&$rows) {
     $statistics = parent::statistics($rows);
-
-    //fetch contributions for both date ranges from pre-existing temp tables
-    $sql = "
-CREATE TEMPORARY TABLE civicrm_temp_civireport_repeat3
-SELECT contact_id FROM civicrm_temp_civireport_repeat1 UNION SELECT contact_id FROM civicrm_temp_civireport_repeat2;";
+    $sql = "{$this->_select} {$this->_from} {$this->_where}";
     $dao = CRM_Core_DAO::executeQuery($sql);
-
-    $sql = "
-SELECT civicrm_temp_civireport_repeat3.contact_id,
-       civicrm_temp_civireport_repeat1.total_amount_sum as contribution1_total_amount_sum,
-       civicrm_temp_civireport_repeat2.total_amount_sum as contribution2_total_amount_sum
-FROM civicrm_temp_civireport_repeat3
-LEFT JOIN civicrm_temp_civireport_repeat1
-       ON civicrm_temp_civireport_repeat3.contact_id = civicrm_temp_civireport_repeat1.contact_id
-LEFT JOIN civicrm_temp_civireport_repeat2
-       ON civicrm_temp_civireport_repeat3.contact_id = civicrm_temp_civireport_repeat2.contact_id";
-    $dao = CRM_Core_DAO::executeQuery($sql);
-
     //store contributions in array 'contact_sums' for comparison
     $contact_sums = array();
     while ($dao->fetch()) {
-      $contact_sums[$dao->contact_id]
-        = array(
-          'contribution1_total_amount_sum' => $dao->contribution1_total_amount_sum,
-          'contribution2_total_amount_sum' => $dao->contribution2_total_amount_sum,
-        );
+      $contact_sums[$dao->contact_civireport_id] = array(
+        'contribution1_total_amount_sum' => $dao->contribution1_total_amount_sum,
+        'contribution2_total_amount_sum' => $dao->contribution2_total_amount_sum,
+      );
     }
 
     $total_distinct_contacts = count($contact_sums);
@@ -804,21 +799,23 @@ GROUP BY    currency
     }
 
     $subWhere = $this->whereContribution();
+    $from = $this->fromContribution();
     $subContributionQuery1 = "
 SELECT {$subSelect1} contribution1.{$contriCol},
        sum( contribution1.total_amount ) AS total_amount_sum,
        count( * ) AS total_amount_count
-FROM   civicrm_contribution contribution1
+{$from}
 {$subWhere}
 GROUP BY contribution1.{$contriCol}";
 
     $subWhere = $this->whereContribution('contribution2');
+    $from = $this->fromContribution('contribution2');
     $subContributionQuery2 = "
 SELECT {$subSelect2} contribution2.{$contriCol},
        sum( contribution2.total_amount ) AS total_amount_sum,
        count( * ) AS total_amount_count,
        currency
-FROM   civicrm_contribution contribution2
+{$from}
 {$subWhere}
 GROUP BY contribution2.{$contriCol}";
 

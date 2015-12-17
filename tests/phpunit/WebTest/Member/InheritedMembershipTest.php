@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -35,6 +35,7 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
   }
 
   public function testInheritedMembership() {
+    //$this->markTestSkipped('Skipping for now as it works fine locally.');
     // Log in using webtestLogin() method
     $this->webtestLogin();
 
@@ -63,9 +64,7 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
 
     $this->select('period_type', 'value=rolling');
 
-    $this->removeSelection('relationship_type_id', 'label=- select -');
-    $this->addSelection('relationship_type_id', 'label=Employer of');
-
+    $this->select2('relationship_type_id', 'Employer of', TRUE);
     $this->type('max_related', '5');
 
     $this->click('_qf_MembershipType_upload-bottom');
@@ -114,13 +113,12 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
     $joinDate = date('Y-m-d');
     $startDate = date('Y-m-d');
     $endDate = date('Y-m-d', mktime(0, 0, 0, date('m'), date('d') - 1, date('Y') + 1));
-    $configVars = new CRM_Core_Config_Variables();
     foreach (array(
                'joinDate',
                'startDate',
                'endDate',
              ) as $date) {
-      $$date = CRM_Utils_Date::customFormat($$date, $configVars->dateformatFull);
+      $$date = CRM_Utils_Date::customFormat($$date, $this->webtestGetSetting('dateformatFull'));
     }
 
     $this->webtestVerifyTabularData(
@@ -291,8 +289,7 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
 
     $this->select('period_type', 'value=rolling');
 
-    $this->removeSelection('relationship_type_id', 'label=- select -');
-    $this->addSelection('relationship_type_id', 'label=Employer of');
+    $this->select2('relationship_type_id', 'Employer of', TRUE);
 
     $this->type('max_related', '5');
 
@@ -360,12 +357,12 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
 
     // click through to the activity view screen
     $this->click('css=li#tab_activity a');
-    $this->waitForElementPresent("xpath=//table[@class='contact-activity-selector-activity dataTable no-footer']/tbody//tr/td[8]/span/a[text()='View']");
+    $this->waitForElementPresent("xpath=//table[@class='contact-activity-selector-activity crm-ajax-table dataTable no-footer']/tbody/tr/td[8]/span/a");
 
     // check number of activity for contact
     $this->assertEquals(1, $this->getText("xpath=//li[@id='tab_activity']/a/em"));
 
-    $url = $this->parseURL($this->getAttribute("xpath=//table[@class='contact-activity-selector-activity dataTable no-footer']/tbody//tr/td[8]/span/a[text()='View']@href"));
+    $url = $this->parseURL($this->getAttribute("xpath=//table[@class='contact-activity-selector-activity crm-ajax-table dataTable no-footer']/tbody/tr/td[8]/span/a@href"));
     $expectedMembershipActivityId = $url['queryString']['id'];
 
     // verify membership id with membership activity id
@@ -393,9 +390,9 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
 
     // click through to the activity view screen after edit
     $this->click('css=li#tab_activity a');
-    $this->waitForElementPresent("xpath=//table[@class='contact-activity-selector-activity dataTable no-footer']/tbody//tr/td[8]/span/a[text()='View']");
+    $this->waitForElementPresent("xpath=//table[@class='contact-activity-selector-activity crm-ajax-table dataTable no-footer']/tbody/tr/td[8]/span/a");
     $this->assertEquals(1, $this->getText("xpath=//li[@id='tab_activity']/a/em"));
-    $url = $this->parseURL($this->getAttribute("xpath=//table[@class='contact-activity-selector-activity dataTable no-footer']/tbody//tr/td[8]/span/a[text()='View']@href"));
+    $url = $this->parseURL($this->getAttribute("xpath=//table[@class='contact-activity-selector-activity crm-ajax-table dataTable no-footer']/tbody/tr/td[8]/span/a@href"));
     $actualMembershipActivityId1 = $url['queryString']['id'];
 
     // verify membership id and membership activity id with previous one
@@ -427,9 +424,7 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
 
     $this->select('period_type', 'value=rolling');
 
-    $this->removeSelection('relationship_type_id', 'label=- select -');
-    $this->addSelection('relationship_type_id', 'label=Employer of');
-
+    $this->select2('relationship_type_id', 'Employer of', TRUE);
     $this->type('max_related', '5');
 
     $this->click('_qf_MembershipType_upload-bottom');
@@ -477,9 +472,9 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
 
     // click through to the activity view screen
     $this->click('css=li#tab_activity a');
-    $this->waitForElementPresent("xpath=//table[@class='contact-activity-selector-activity dataTable no-footer']/tbody//tr/td[8]/span/a[text()='View']");
+    $this->waitForElementPresent("xpath=//table[@class='contact-activity-selector-activity crm-ajax-table dataTable no-footer']/tbody//tr/td[8]/span/a[text()='View']");
     $this->assertEquals(1, $this->getText("xpath=//li[@id='tab_activity']/a/em"));
-    $url = $this->parseURL($this->getAttribute("xpath=//table[@class='contact-activity-selector-activity dataTable no-footer']/tbody//tr/td[8]/span/a[text()='View']@href"));
+    $url = $this->parseURL($this->getAttribute("xpath=//table[@class='contact-activity-selector-activity crm-ajax-table dataTable no-footer']/tbody//tr/td[8]/span/a[text()='View']@href"));
     $actualMembershipActivityId2 = $url['queryString']['id'];
 
     // verify membership id and membership activity id with previous one
@@ -515,7 +510,7 @@ class WebTest_Member_InheritedMembershipTest extends CiviSeleniumTestCase {
 
     // click through to the activity view screen
     $this->click('css=li#tab_activity a');
-    $this->waitForText("xpath=//table[@class='contact-activity-selector-activity dataTable no-footer']/tbody/tr/td", "No matches found.");
+    $this->waitForText("xpath=//table[@class='contact-activity-selector-activity crm-ajax-table dataTable no-footer']/tbody/tr/td", "None found.");
     $this->assertEquals(0, $this->getText("xpath=//li[@id='tab_activity']/a/em"));
 
     // click through to the relationship view screen

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -163,7 +163,7 @@ class WebTest_Contact_InlineFieldsEditTest extends CiviSeleniumTestCase {
 
     // Edit demographics
     $this->inlineEdit('crm-demographic-content', array(
-      'civicrm_gender_Female_1' => 1,
+      "xpath=//div[@class='crm-clear']/div[1]/div[@class='crm-content']/label[text()='Female']" => TRUE,
       'is_deceased' => 1,
       'birth_date' => 'date: Jan 1 1970',
     ), 'no_open');

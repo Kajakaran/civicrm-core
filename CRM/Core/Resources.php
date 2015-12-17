@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -99,6 +99,11 @@ class CRM_Core_Resources {
   public $ajaxPopupsEnabled;
 
   /**
+   * @var \Civi\Core\Paths
+   */
+  protected $paths;
+
+  /**
    * Get or set the single instance of CRM_Core_Resources.
    *
    * @param CRM_Core_Resources $instance
@@ -111,10 +116,7 @@ class CRM_Core_Resources {
     }
     if (self::$_singleton === NULL) {
       $sys = CRM_Extension_System::singleton();
-      $cache = new CRM_Utils_Cache_SqlGroup(array(
-                 'group' => 'js-strings',
-                 'prefetch' => FALSE,
-               ));
+      $cache = Civi::cache('js_strings');
       self::$_singleton = new CRM_Core_Resources(
         $sys->getMapper(),
         $cache,
@@ -138,14 +140,13 @@ class CRM_Core_Resources {
     $this->strings = new CRM_Core_Resources_Strings($cache);
     $this->cacheCodeKey = $cacheCodeKey;
     if ($cacheCodeKey !== NULL) {
-      $this->cacheCode = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, $cacheCodeKey);
+      $this->cacheCode = Civi::settings()->get($cacheCodeKey);
     }
     if (!$this->cacheCode) {
       $this->resetCacheCode();
     }
-    $this->ajaxPopupsEnabled = (bool) CRM_Core_BAO_Setting::getItem(
-      CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'ajaxPopupsEnabled', NULL, TRUE
-    );
+    $this->ajaxPopupsEnabled = (bool) Civi::settings()->get('ajaxPopupsEnabled');
+    $this->paths = Civi::paths();
   }
 
   /**
@@ -195,13 +196,7 @@ class CRM_Core_Resources {
       $domain = ($translate === TRUE) ? $ext : $translate;
       $this->addString($this->strings->get($domain, $this->getPath($ext, $file), 'text/javascript'), $domain);
     }
-    // Look for non-minified version if we are in debug mode
-    if (CRM_Core_Config::singleton()->debug && strpos($file, '.min.js') !== FALSE) {
-      $nonMiniFile = str_replace('.min.js', '.js', $file);
-      if ($this->getPath($ext, $nonMiniFile)) {
-        $file = $nonMiniFile;
-      }
-    }
+    $this->resolveFileName($file, $ext);
     return $this->addScriptUrl($this->getUrl($ext, $file, TRUE), $weight, $region);
   }
 
@@ -416,6 +411,7 @@ class CRM_Core_Resources {
    * @return CRM_Core_Resources
    */
   public function addStyleFile($ext, $file, $weight = self::DEFAULT_WEIGHT, $region = self::DEFAULT_REGION) {
+    $this->resolveFileName($file, $ext);
     return $this->addStyleUrl($this->getUrl($ext, $file, TRUE), $weight, $region);
   }
 
@@ -475,10 +471,13 @@ class CRM_Core_Resources {
    */
   public function getPath($ext, $file = NULL) {
     // TODO consider caching results
+    $base = $this->paths->hasVariable($ext)
+      ? rtrim($this->paths->getVariable($ext, 'path'), '/')
+      : $this->extMapper->keyToBasePath($ext);
     if ($file === NULL) {
-      return $this->extMapper->keyToBasePath($ext);
+      return $base;
     }
-    $path = $this->extMapper->keyToBasePath($ext) . '/' . $file;
+    $path = $base . '/' . $file;
     if (is_file($path)) {
       return $path;
     }
@@ -504,7 +503,10 @@ class CRM_Core_Resources {
       $file .= '?r=' . $this->getCacheCode();
     }
     // TODO consider caching results
-    return $this->extMapper->keyToUrl($ext) . '/' . $file;
+    $base = $this->paths->hasVariable($ext)
+      ? $this->paths->getVariable($ext, 'url')
+      : ($this->extMapper->keyToUrl($ext) . '/');
+    return $base . $file;
   }
 
   /**
@@ -525,7 +527,7 @@ class CRM_Core_Resources {
     $patterns = (array) $patterns;
     $files = array();
     foreach ($patterns as $pattern) {
-      if ($pattern{0} === '/') {
+      if (CRM_Utils_File::isAbsolute($pattern)) {
         // Absolute path.
         $files = array_merge($files, (array) glob($pattern, $flags));
       }
@@ -555,7 +557,7 @@ class CRM_Core_Resources {
   public function setCacheCode($value) {
     $this->cacheCode = $value;
     if ($this->cacheCodeKey) {
-      CRM_Core_BAO_Setting::setItem($value, CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, $this->cacheCodeKey);
+      Civi::settings()->set($this->cacheCodeKey, $value);
     }
     return $this;
   }
@@ -587,14 +589,17 @@ class CRM_Core_Resources {
 
       // Add resources from coreResourceList
       $jsWeight = -9999;
-      foreach ($this->coreResourceList() as $file) {
-        if (substr($file, -2) == 'js') {
+      foreach ($this->coreResourceList($region) as $item) {
+        if (is_array($item)) {
+          $this->addSetting($item);
+        }
+        elseif (substr($item, -2) == 'js') {
           // Don't bother  looking for ts() calls in packages, there aren't any
-          $translate = (substr($file, 0, 3) == 'js/');
-          $this->addScriptFile('civicrm', $file, $jsWeight++, $region, $translate);
+          $translate = (substr($item, 0, 3) == 'js/');
+          $this->addScriptFile('civicrm', $item, $jsWeight++, $region, $translate);
         }
         else {
-          $this->addStyleFile('civicrm', $file, -100, $region);
+          $this->addStyleFile('civicrm', $item, -100, $region);
         }
       }
 
@@ -639,9 +644,11 @@ class CRM_Core_Resources {
       if (!empty($config->customCSSURL)) {
         $this->addStyleUrl($config->customCSSURL, 99, $region);
       }
-      if (!CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'disable_core_css')) {
+      if (!Civi::settings()->get('disable_core_css')) {
         $this->addStyleFile('civicrm', 'css/civicrm.css', -99, $region);
       }
+      // crm-i.css added ahead of other styles so it can be overridden by FA.
+      $this->addStyleFile('civicrm', 'css/crm-i.css', -101, $region);
     }
     return $this;
   }
@@ -685,52 +692,53 @@ class CRM_Core_Resources {
   /**
    * List of core resources we add to every CiviCRM page.
    *
+   * Note: non-compressed versions of .min files will be used in debug mode
+   *
+   * @param string $region
    * @return array
    */
-  public function coreResourceList() {
+  public function coreResourceList($region) {
     $config = CRM_Core_Config::singleton();
-    // Use minified files for production, uncompressed in debug mode
-    // Note, $this->addScriptFile would automatically search for the non-minified file in debug mode but this is probably faster
-    $min = $config->debug ? '' : '.min';
 
     // Scripts needed by everyone, everywhere
     // FIXME: This is too long; list needs finer-grained segmentation
     $items = array(
       "bower_components/jquery/dist/jquery.min.js",
       "bower_components/jquery-ui/jquery-ui.min.js",
-      "bower_components/jquery-ui/themes/smoothness/jquery-ui$min.css",
+      "bower_components/jquery-ui/themes/smoothness/jquery-ui.min.css",
       "bower_components/lodash-compat/lodash.min.js",
-      "packages/jquery/plugins/jquery.mousewheel$min.js",
-      "bower_components/select2/select2$min.js",
-      "bower_components/select2/select2$min.css",
+      "packages/jquery/plugins/jquery.mousewheel.min.js",
+      "bower_components/select2/select2.min.js",
+      "bower_components/select2/select2.min.css",
+      "bower_components/font-awesome/css/font-awesome.min.css",
       "packages/jquery/plugins/jquery.tableHeader.js",
-      "packages/jquery/plugins/jquery.form$min.js",
-      "packages/jquery/plugins/jquery.timeentry$min.js",
-      "packages/jquery/plugins/jquery.blockUI$min.js",
-      "bower_components/datatables/media/js/jquery.dataTables$min.js",
-      "bower_components/datatables/media/css/jquery.dataTables$min.css",
-      "bower_components/jquery-validation/dist/jquery.validate$min.js",
-      "packages/jquery/plugins/jquery.ui.datepicker.validation.pack.js",
+      "packages/jquery/plugins/jquery.form.min.js",
+      "packages/jquery/plugins/jquery.timeentry.min.js",
+      "packages/jquery/plugins/jquery.blockUI.min.js",
+      "bower_components/datatables/media/js/jquery.dataTables.min.js",
+      "bower_components/datatables/media/css/jquery.dataTables.min.css",
+      "bower_components/jquery-validation/dist/jquery.validate.min.js",
+      "packages/jquery/plugins/jquery.ui.datepicker.validation.min.js",
       "js/Common.js",
       "js/crm.ajax.js",
+      "js/wysiwyg/crm.wysiwyg.js",
     );
     // add wysiwyg editor
-    $editorID = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'editor_id');
-    $editor = CRM_Utils_Array::value($editorID,
-      CRM_Core_OptionGroup::values('wysiwyg_editor', FALSE, FALSE, FALSE, NULL, 'name')
-    );
-    $items[] = "js/wysiwyg/crm.wysiwyg.js";
+    $editor = Civi::settings()->get('editor_id');
     if ($editor == "CKEditor") {
-      $items[] = "bower_components/ckeditor/ckeditor.js";
       $items[] = "js/wysiwyg/crm.ckeditor.js";
+      $ckConfig = CRM_Admin_Page_CKEditorConfig::getConfigUrl();
+      if ($ckConfig) {
+        $items[] = array('config' => array('CKEditorCustomConfig' => $ckConfig));
+      }
     }
 
     // These scripts are only needed by back-office users
     if (CRM_Core_Permission::check('access CiviCRM')) {
-      $items[] = "packages/jquery/plugins/jquery.menu$min.js";
-      $items[] = "css/navigation.css";
-      $items[] = "packages/jquery/plugins/jquery.jeditable$min.js";
-      $items[] = "packages/jquery/plugins/jquery.notify$min.js";
+      $items[] = "packages/jquery/plugins/jquery.menu.min.js";
+      $items[] = "css/civicrmNavigation.css";
+      $items[] = "packages/jquery/plugins/jquery.jeditable.min.js";
+      $items[] = "packages/jquery/plugins/jquery.notify.min.js";
       $items[] = "js/jquery/jquery.crmeditable.js";
     }
 
@@ -758,8 +766,8 @@ class CRM_Core_Resources {
       }
     }
 
-    // CMS-specific resources
-    $config->userSystem->appendCoreResources($items);
+    // Allow hooks to modify this list
+    CRM_Utils_Hook::coreResourceList($items, $region);
 
     return $items;
   }
@@ -815,6 +823,21 @@ class CRM_Core_Resources {
     );
 
     return $filters;
+  }
+
+  /**
+   * In debug mode, look for a non-minified version of this file
+   *
+   * @param string $fileName
+   * @param string $extName
+   */
+  private function resolveFileName(&$fileName, $extName) {
+    if (CRM_Core_Config::singleton()->debug && strpos($fileName, '.min.') !== FALSE) {
+      $nonMiniFile = str_replace('.min.', '.', $fileName);
+      if ($this->getPath($extName, $nonMiniFile)) {
+        $fileName = $nonMiniFile;
+      }
+    }
   }
 
 }

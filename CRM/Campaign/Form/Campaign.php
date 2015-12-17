@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,13 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * This class generates form components for processing a campaign
- *
+ * This class generates form components for processing a campaign.
  */
 class CRM_Campaign_Form_Campaign extends CRM_Core_Form {
 
@@ -79,14 +76,6 @@ class CRM_Campaign_Form_Campaign extends CRM_Core_Form {
       CRM_Utils_System::permissionDenied();
     }
 
-    //check for custom data type.
-    $this->_cdType = CRM_Utils_Array::value('type', $_GET);
-    $this->assign('cdType', FALSE);
-    if ($this->_cdType) {
-      $this->assign('cdType', TRUE);
-      return CRM_Custom_Form_CustomData::preProcess($this);
-    }
-
     $this->_context = CRM_Utils_Request::retrieve('context', 'String', $this);
 
     $this->assign('context', $this->_context);
@@ -126,11 +115,12 @@ class CRM_Campaign_Form_Campaign extends CRM_Core_Form {
 
     // when custom data is included in form.
     if (!empty($_POST['hidden_custom'])) {
+      $campaignTypeId = empty($_POST['campaign_type_id']) ? NULL : $_POST['campaign_type_id'];
       $this->set('type', 'Campaign');
-      $this->set('subType', CRM_Utils_Array::value('campaign_type_id', $_POST));
+      $this->set('subType', $campaignTypeId);
       $this->set('entityId', $this->_campaignId);
 
-      CRM_Custom_Form_CustomData::preProcess($this);
+      CRM_Custom_Form_CustomData::preProcess($this, NULL, $campaignTypeId, 1, 'Campaign', $this->_campaignId);
       CRM_Custom_Form_CustomData::buildQuickForm($this);
       CRM_Custom_Form_CustomData::setDefaultValues($this);
     }
@@ -145,11 +135,6 @@ class CRM_Campaign_Form_Campaign extends CRM_Core_Form {
    */
   public function setDefaultValues() {
     $defaults = $this->_values;
-
-    //load only custom data defaults.
-    if ($this->_cdType) {
-      return CRM_Custom_Form_CustomData::setDefaultValues($this);
-    }
 
     if (isset($defaults['start_date'])) {
       list($defaults['start_date'], $defaults['start_date_time'])
@@ -208,10 +193,6 @@ class CRM_Campaign_Form_Campaign extends CRM_Core_Form {
     }
 
     $this->applyFilter('__ALL__', 'trim');
-
-    if ($this->_cdType) {
-      return CRM_Custom_Form_CustomData::buildQuickForm($this);
-    }
 
     //lets assign custom data type and subtype.
     $this->assign('customDataType', 'Campaign');
@@ -311,9 +292,6 @@ class CRM_Campaign_Form_Campaign extends CRM_Core_Form {
 
   /**
    * Form submission of new/edit campaign is processed.
-   *
-   *
-   * @return void
    */
   public function postProcess() {
     // store the submitted values in an array

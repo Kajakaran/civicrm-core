@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -29,13 +29,11 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
 
   /**
-   * Class constructor
+   * Class constructor.
    */
   public function __construct() {
     parent::__construct();
@@ -60,16 +58,14 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
       CRM_Core_DAO::storeValues($group, $defaults);
       return $group;
     }
-
-    return NULL;
   }
 
   /**
-   * Delete the group and all the object that connect to
-   * this group. Incredibly destructive
+   * Delete the group and all the object that connect to this group.
    *
-   * @param int $id
-   *   Group id.
+   * Incredibly destructive.
+   *
+   * @param int $id Group id.
    */
   public static function discard($id) {
     CRM_Utils_Hook::pre('delete', 'Group', $id, CRM_Core_DAO::$_nullArray);
@@ -111,10 +107,7 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
     $query = "DELETE FROM civicrm_acl_entity_role where entity_table = 'civicrm_group' AND entity_id = %1";
     CRM_Core_DAO::executeQuery($query, $params);
 
-    if (CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::MULTISITE_PREFERENCES_NAME,
-      'is_enabled'
-    )
-    ) {
+    if (Civi::settings()->get('is_enabled')) {
       // clear any descendant groups cache if exists
       CRM_Core_BAO_Cache::deleteGroup('descendant groups for an org');
     }
@@ -138,6 +131,8 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
 
   /**
    * Returns an array of the contacts in the given group.
+   *
+   * @param int $id
    */
   public static function getGroupContacts($id) {
     $params = array(array('group', 'IN', array($id => 1), 0, 0));
@@ -203,7 +198,7 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
    *   this array contains the list of members for this group id
    */
   public static function &getMember($groupID, $useCache = TRUE) {
-    $params = array(array('group', 'IN', array($groupID => 1), 0, 0));
+    $params = array(array('group', '=', $groupID, 0, 0));
     $returnProperties = array('contact_id');
     list($contacts, $_) = CRM_Contact_BAO_Query::apiQuery($params, $returnProperties, NULL, NULL, 0, 0, $useCache);
 
@@ -302,12 +297,17 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
    *
    * @param int $id
    *   The id of the object.
+   * @param bool $excludeHidden
+   *   Should hidden groups be excluded.
+   *   Logically this is the wrong place to filter hidden groups out as that is
+   *   not a permission issue. However, as other functions may rely on that defaulting to
+   *   FALSE for now & only the api call is calling with true.
    *
-   * @return string
-   *   the permission that the user has (or NULL)
+   * @return array
+   *   The permission that the user has (or NULL)
    */
-  public static function checkPermission($id) {
-    $allGroups = CRM_Core_PseudoConstant::allGroup();
+  public static function checkPermission($id, $excludeHidden = FALSE) {
+    $allGroups = CRM_Core_PseudoConstant::allGroup(NULL, $excludeHidden);
 
     $permissions = NULL;
     if (CRM_Core_Permission::check('edit all contacts') ||
@@ -424,9 +424,7 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
     if (CRM_Utils_Array::value('no_parent', $params) !== 1) {
       if (empty($params['parents']) &&
         $domainGroupID != $group->id &&
-        CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::MULTISITE_PREFERENCES_NAME,
-          'is_enabled'
-        ) &&
+        Civi::settings()->get('is_enabled') &&
         !CRM_Contact_BAO_GroupNesting::hasParentGroups($group->id)
       ) {
         // if no parent present and the group doesn't already have any parents,
@@ -501,7 +499,7 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
    * and store it for future use
    */
   public function buildClause() {
-    $params = array(array('group', 'IN', array($this->id => 1), 0, 0));
+    $params = array(array('group', 'IN', array($this->id), 0, 0));
 
     if (!empty($params)) {
       $tables = $whereTables = array();
@@ -795,6 +793,11 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
     $orderBy = ' ORDER BY groups.title asc';
     if (!empty($params['sort'])) {
       $orderBy = ' ORDER BY ' . CRM_Utils_Type::escape($params['sort'], 'String');
+
+      // CRM-16905 - Sort by count cannot be done with sql
+      if (strpos($params['sort'], 'count') === 0) {
+        $orderBy = $limit = '';
+      }
     }
 
     $select = $from = $where = "";
@@ -861,6 +864,11 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
           'count' => '0',
         );
         CRM_Core_DAO::storeValues($object, $values[$object->id]);
+        // Wrap with crm-editable. Not an ideal solution.
+        if (in_array(CRM_Core_Permission::EDIT, $groupPermissions)) {
+          $values[$object->id]['title'] = '<span class="crm-editable crmf-title">' . $values[$object->id]['title'] . '</span>';
+        }
+
         if ($object->saved_search_id) {
           $values[$object->id]['title'] .= ' (' . ts('Smart Group') . ')';
           // check if custom search, if so fix view link
@@ -971,6 +979,17 @@ class CRM_Contact_BAO_Group extends CRM_Contact_DAO_Group {
       while ($dao->fetch()) {
         $values[$dao->group_id]['count'] = $dao->count;
       }
+    }
+
+    // CRM-16905 - Sort by count cannot be done with sql
+    if (!empty($params['sort']) && strpos($params['sort'], 'count') === 0) {
+      usort($values, function($a, $b) {
+        return $a['count'] - $b['count'];
+      });
+      if (strpos($params['sort'], 'desc')) {
+        $values = array_reverse($values, TRUE);
+      }
+      return array_slice($values, $params['offset'], $params['rowCount']);
     }
 
     return $values;

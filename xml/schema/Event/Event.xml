@@ -328,7 +328,7 @@
   <field>
     <name>default_role_id</name>
     <uniqueName>default_role_id</uniqueName>
-    <title>Participant Role</title>
+    <title>Default Role ID</title>
     <import>true</import>
     <type>int unsigned</type>
     <default>1</default>
@@ -649,6 +649,28 @@
     <type>int unsigned</type>
     <comment>Expire pending but unconfirmed registrations after this many hours.</comment>
     <add>3.0</add>
+    <html>
+      <type>Text</type>
+    </html>
+  </field>
+  <field>
+    <name>allow_selfcancelxfer</name>
+    <type>boolean</type>
+    <default>0</default>
+    <title>Allow Self-service Cancellation or Transfer</title>
+    <comment>Allow self service cancellation or transfer for event?</comment>
+    <add>4.7</add>
+    <html>
+      <type>CheckBox</type>
+    </html>
+  </field>
+  <field>
+    <name>selfcancelxfer_time</name>
+    <type>int unsigned</type>
+    <default>0</default>
+    <title>Self-service Cancellation or Transfer Time</title>
+    <comment>Number of hours prior to event start date to allow self-service cancellation or transfer.</comment>
+    <add>4.7</add>
     <html>
       <type>Text</type>
     </html>

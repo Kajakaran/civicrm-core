@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
@@ -143,8 +141,6 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
 
   /**
    * Build all the data structures needed to build the form.
-   *
-   * @return void
    */
   public function preProcess() {
     $this->_action = CRM_Utils_Request::retrieve('action', 'String', $this, FALSE, 'add');
@@ -404,15 +400,12 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
   }
 
   /**
-   * Set default values for the form. Note that in edit/view mode
-   * the default values are retrieved from the database
+   * Set default values for the form.
    *
-   *
-   * @return void
+   * Note that in edit/view mode the default values are retrieved from the database
    */
   public function setDefaultValues() {
     $defaults = $this->_values;
-    $params = array();
 
     if ($this->_action & CRM_Core_Action::ADD) {
       if (array_key_exists('TagsAndGroups', $this->_editOptions)) {
@@ -471,8 +464,9 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
   }
 
   /**
-   * Do the set default related to location type id,
-   * primary location,  default country
+   * Do the set default related to location type id, primary location,  default country.
+   *
+   * @param array $defaults
    */
   public function blockSetDefaults(&$defaults) {
     $locationTypeKeys = array_filter(array_keys(CRM_Core_PseudoConstant::get('CRM_Core_DAO_Address', 'location_type_id')), 'is_int');
@@ -516,13 +510,11 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
 
       for ($instance = 1; $instance <= $this->get($blockName . '_Block_Count'); $instance++) {
         // make we require one primary block, CRM-5505
-        if ($updateMode) {
-          if (!$hasPrimary) {
-            $hasPrimary = CRM_Utils_Array::value(
-              'is_primary',
-              CRM_Utils_Array::value($instance, $defaults[$name])
-            );
-          }
+        if ($updateMode && !$hasPrimary) {
+          $hasPrimary = CRM_Utils_Array::value(
+            'is_primary',
+            CRM_Utils_Array::value($instance, $defaults[$name])
+          );
           continue;
         }
 
@@ -572,7 +564,6 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
    * add the rules (mainly global rules) for form.
    * All local rules are added near the element
    *
-   * @return void
    * @see valid_date
    */
   public function addRules() {
@@ -738,8 +729,6 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
 
   /**
    * Build the form object.
-   *
-   * @return void
    */
   public function buildQuickForm() {
     //load form for child blocks
@@ -749,14 +738,13 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
     }
 
     if ($this->_action == CRM_Core_Action::UPDATE) {
-      $deleteExtra = ts('Are you sure you want to delete contact image.');
+      $deleteExtra = json_encode(ts('Are you sure you want to delete contact image.'));
       $deleteURL = array(
         CRM_Core_Action::DELETE => array(
           'name' => ts('Delete Contact Image'),
           'url' => 'civicrm/contact/image',
           'qs' => 'reset=1&cid=%%id%%&action=delete',
-          'extra' =>
-          'onclick = "if (confirm( \'' . $deleteExtra . '\' ) ) this.href+=\'&amp;confirmed=1\'; else return false;"',
+          'extra' => 'onclick = "' . htmlspecialchars("if (confirm($deleteExtra)) this.href+='&confirmed=1'; else return false;") . '"',
         ),
       );
       $deleteURL = CRM_Core_Action::formLink($deleteURL,
@@ -867,9 +855,6 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
 
   /**
    * Form submission of new/edit contact is processed.
-   *
-   *
-   * @return void
    */
   public function postProcess() {
     // check if dedupe button, if so return.
@@ -987,6 +972,18 @@ class CRM_Contact_Form_Contact extends CRM_Core_Form {
     if ($this->_parseStreetAddress) {
       $parseResult = self::parseAddress($params);
       $parseStatusMsg = self::parseAddressStatusMsg($parseResult);
+    }
+
+    $blocks = array('email', 'phone', 'im', 'openid', 'address', 'website');
+    foreach ($blocks as $block) {
+      if (!empty($this->_preEditValues[$block]) && is_array($this->_preEditValues[$block])) {
+        foreach ($this->_preEditValues[$block] as $count => $value) {
+          if (!empty($value['id'])) {
+            $params[$block][$count]['id'] = $value['id'];
+            $params[$block]['isIdSet'] = TRUE;
+          }
+        }
+      }
     }
 
     // Allow un-setting of location info, CRM-5969

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -58,6 +58,11 @@ class CRM_Core_Module {
 
   /**
    * Get a list of all known modules.
+   *
+   * @param bool $fresh
+   *   Force new results?
+   *
+   * @return array
    */
   public static function getAll($fresh = FALSE) {
     static $result;
@@ -69,6 +74,25 @@ class CRM_Core_Module {
       $result = array_merge($result, $config->userSystem->getModules());
     }
     return $result;
+  }
+
+  /**
+   * Get the status for each module.
+   *
+   * @param array $modules
+   *   Array(CRM_Core_Module).
+   * @return array
+   *   Array(string $moduleName => string $statusCode).
+   * @see CRM_Extension_Manager::STATUS_INSTALLED
+   * @see CRM_Extension_Manager::STATUS_DISABLED
+   */
+  public static function collectStatuses($modules) {
+    $statuses = array();
+    foreach ($modules as $module) {
+      $statuses[$module->name] = $module->is_active ? CRM_Extension_Manager::STATUS_INSTALLED : CRM_Extension_Manager::STATUS_DISABLED;
+
+    }
+    return $statuses;
   }
 
 }

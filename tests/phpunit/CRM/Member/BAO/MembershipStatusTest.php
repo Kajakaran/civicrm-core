@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -66,6 +66,27 @@ class CRM_Member_BAO_MembershipStatusTest extends CiviUnitTestCase {
     $defaults = array();
     $result = CRM_Member_BAO_MembershipStatus::retrieve($params, $defaults);
     $this->assertEquals($result->name, 'testStatus', 'Verify membership status name.');
+    CRM_Member_BAO_MembershipStatus::del($membershipStatus->id);
+  }
+
+  public function testPseudoConstantflush() {
+    $params = array(
+      'name' => 'testStatus',
+      'is_active' => 1,
+    );
+    $membershipStatus = CRM_Member_BAO_MembershipStatus::add($params);
+    $defaults = array();
+    $result = CRM_Member_BAO_MembershipStatus::retrieve($params, $defaults);
+    $this->assertEquals($result->name, 'testStatus', 'Verify membership status name.');
+    $updateParams = array(
+      'id' => $membershipStatus->id,
+      'name' => 'testStatus',
+      'label' => 'Changed Status',
+      'is_active' => 1,
+    );
+    $membershipStatus2 = CRM_Member_BAO_MembershipStatus::add($updateParams);
+    $result = CRM_Member_PseudoConstant::membershipStatus($membershipStatus->id, NULL, 'label', FALSE, FALSE);
+    $this->assertEquals($result, 'Changed Status', 'Verify updated membership status label From PseudoConstant.');
     CRM_Member_BAO_MembershipStatus::del($membershipStatus->id);
   }
 

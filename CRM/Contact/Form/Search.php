@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
- */
-
-/**
- * Files required
  */
 
 /**
@@ -150,6 +144,13 @@ class CRM_Contact_Form_Search extends CRM_Core_Form_Search {
   protected $_operator;
 
   protected $_modeValue;
+
+  /**
+   * Declare entity reference fields as they will need to be converted to using 'IN'.
+   *
+   * @var array
+   */
+  protected $entityReferenceFields = array('membership_type_id');
 
   /**
    * Name of the selector to use.
@@ -344,13 +345,12 @@ class CRM_Contact_Form_Search extends CRM_Core_Form_Search {
       }
     }
 
+    asort($this->_taskList);
     return $this->_taskList;
   }
 
   /**
    * Build the common elements between the search/advanced form.
-   *
-   * @return void
    */
   public function buildQuickForm() {
     parent::buildQuickForm();
@@ -494,8 +494,6 @@ class CRM_Contact_Form_Search extends CRM_Core_Form_Search {
 
   /**
    * Processing needed for buildForm and later.
-   *
-   * @return void
    */
   public function preProcess() {
     // set the various class variables
@@ -568,7 +566,7 @@ class CRM_Contact_Form_Search extends CRM_Core_Form_Search {
       $this->_formValues = $this->controller->exportValues($this->_name);
 
       $this->normalizeFormValues();
-      $this->_params = CRM_Contact_BAO_Query::convertFormValues($this->_formValues);
+      $this->_params = CRM_Contact_BAO_Query::convertFormValues($this->_formValues, 0, FALSE, NULL, $this->entityReferenceFields);
       $this->_returnProperties = &$this->returnProperties();
 
       // also get the uf group id directly from the post value
@@ -586,7 +584,7 @@ class CRM_Contact_Form_Search extends CRM_Core_Form_Search {
     }
     else {
       $this->_formValues = $this->get('formValues');
-      $this->_params = CRM_Contact_BAO_Query::convertFormValues($this->_formValues);
+      $this->_params = CRM_Contact_BAO_Query::convertFormValues($this->_formValues, 0, FALSE, NULL, $this->entityReferenceFields);
       $this->_returnProperties = &$this->returnProperties();
       if (!empty($this->_ufGroupID)) {
         $this->set('id', $this->_ufGroupID);
@@ -680,7 +678,7 @@ class CRM_Contact_Form_Search extends CRM_Core_Form_Search {
     if (!isset($this->_componentMode)) {
       $this->_componentMode = CRM_Contact_BAO_Query::MODE_CONTACTS;
     }
-    $modeValues = self::getModeValue($this->_componentMode);
+    self::setModeValues();
 
     self::$_selectorName = $this->_modeValue['selectorName'];
 
@@ -755,8 +753,6 @@ class CRM_Contact_Form_Search extends CRM_Core_Form_Search {
 
   /**
    * Common post processing.
-   *
-   * @return void
    */
   public function postProcess() {
     /*

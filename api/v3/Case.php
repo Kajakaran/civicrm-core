@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -416,6 +416,9 @@ function _civicrm_api3_case_read($caseId, $options) {
   if ($dao->find(TRUE)) {
     $case = array();
     _civicrm_api3_object_to_array($dao, $case);
+
+    _civicrm_api3_custom_data_get($case, 'Case', $caseId);
+
     // Legacy support for client_id - TODO: in apiv4 remove 'client_id'
     $case['client_id'] = $case['contact_id'] = $dao->retrieveContactIdsByCaseId($caseId);
 

@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -175,7 +175,7 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
           }
 
           if (!empty($defaultArray)) {
-            // also add the seperator before and after the value per new conventio (CRM-1604)
+            // also add the separator before and after the value per new convention (CRM-1604)
             $params['default_value'] = CRM_Core_DAO::VALUE_SEPARATOR . implode(CRM_Core_DAO::VALUE_SEPARATOR, $defaultArray) . CRM_Core_DAO::VALUE_SEPARATOR;
           }
         }
@@ -204,7 +204,8 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         'table_name'
       );
 
-      if ($params['option_type'] == 1 && empty($params['option_group_id'])) {
+      //CRM-16659: if option_value then create an option group for this custom field.
+      if ($params['option_type'] == 1 && (empty($params['option_group_id']) || !empty($params['option_value']))) {
         // first create an option group for this custom group
         $optionGroup = new CRM_Core_DAO_OptionGroup();
         $optionGroup->name = "{$columnName}_" . date('YmdHis');
@@ -251,8 +252,8 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         self::fixOptionGroups($params['id'], $params['option_group_id']);
       }
 
-      // if we dont have a default value
-      // retrive it from one of the other custom fields which use this option group
+      // if we do not have a default value
+      // retrieve it from one of the other custom fields which use this option group
       if (empty($params['default_value'])) {
         //don't insert only value separator as default value, CRM-4579
         $defaultValue = self::getOptionGroupDefault($params['option_group_id'],
@@ -1063,10 +1064,8 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         break;
 
       case 'Link':
-        $element->setAttribute('onfocus', "if (!this.value) {this.value='http://';}");
-        $element->setAttribute('onblur', "if (this.value == 'http://') {this.value='';}");
         $element->setAttribute('class', "url");
-        $qf->addRule($elementName, ts('Enter a valid Website.'), 'wikiURL');
+        $qf->addRule($elementName, ts('Enter a valid web address beginning with \'http://\' or \'https://\'.'), 'wikiURL');
         break;
     }
     if ($field->is_view && !$search) {
@@ -1105,7 +1104,7 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
    *   The custom field value.
    * @param int $id
    *   The custom field id.
-   * @param int $options
+   * @param array $options
    *   The assoc array of option name/value pairs.
    *
    * @param int $contactID
@@ -1119,6 +1118,10 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
     $attributes = &$option['attributes'];
     $html_type = $attributes['html_type'];
     $data_type = $attributes['data_type'];
+    // set $id as $fieldID if not passed in the params.
+    if (empty($fieldID)) {
+      $fieldID = $id;
+    }
 
     return self::getDisplayValueCommon($value,
       $option,
@@ -1166,17 +1169,19 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
     switch ($html_type) {
       case 'Radio':
         if ($data_type == 'Boolean') {
-          // Do not assume that if not yes means no.
-          $display = '';
-          if ($value) {
-            $display = ts('Yes');
-          }
-          elseif ((string) $value === '0') {
-            $display = ts('No');
+          $options = array('No', 'Yes');
+        }
+        else {
+          $options = $option;
+        }
+        if (is_array($value)) {
+          $display = NULL;
+          foreach ($value as $data) {
+            $display .= $display ? ', ' . $options[$data] : $options[$data];
           }
         }
         else {
-          $display = CRM_Utils_Array::value($value, $option);
+          $display = CRM_Utils_Array::value($value, $options);
         }
         break;
 
@@ -1186,19 +1191,38 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         ) {
           $display = CRM_Core_DAO::getFieldValue('CRM_Contact_DAO_Contact', $value, 'display_name');
         }
+        elseif (is_array($value)) {
+          $display = NULL;
+          foreach ($value as $data) {
+            $display .= $display ? ', ' . $option[$data] : $option[$data];
+          }
+        }
         else {
           $display = CRM_Utils_Array::value($value, $option);
         }
         break;
 
       case 'Select':
-        $display = CRM_Utils_Array::value($value, $option);
+        if (is_array($value)) {
+          $display = NULL;
+          foreach ($value as $data) {
+            $display .= $display ? ', ' . $option[$data] : $option[$data];
+          }
+        }
+        else {
+          $display = CRM_Utils_Array::value($value, $option);
+        }
         break;
 
       case 'CheckBox':
       case 'AdvMulti-Select':
       case 'Multi-Select':
         if (is_array($value)) {
+          if ($html_type == 'CheckBox') {
+            // CRM-12989 fix
+            CRM_Utils_Array::formatArrayKeys($value);
+          }
+
           $checkedData = $value;
         }
         else {
@@ -1208,25 +1232,16 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
           if ($html_type == 'CheckBox') {
             $newData = array();
             foreach ($checkedData as $v) {
-              $newData[$v] = 1;
+              $v = str_replace(CRM_Core_DAO::VALUE_SEPARATOR, '', $v);
+              $newData[] = $v;
             }
             $checkedData = $newData;
           }
         }
 
         $v = array();
-        $p = array();
         foreach ($checkedData as $key => $val) {
-          if ($html_type == 'CheckBox') {
-            if ($val) {
-              $p[] = $key;
-              $v[] = CRM_Utils_Array::value($key, $option);
-            }
-          }
-          else {
-            $p[] = $val;
-            $v[] = CRM_Utils_Array::value($val, $option);
-          }
+          $v[] = CRM_Utils_Array::value($val, $option);
         }
         if (!empty($v)) {
           $display = implode(', ', $v);
@@ -1249,60 +1264,23 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
         break;
 
       case 'Select State/Province':
-        if (empty($value)) {
-          $display = '';
-        }
-        else {
-          $display = CRM_Core_PseudoConstant::stateProvince($value);
-        }
-        break;
-
       case 'Multi-Select State/Province':
-        if (is_array($value)) {
-          $checkedData = $value;
-        }
-        else {
-          $checkedData = explode(CRM_Core_DAO::VALUE_SEPARATOR,
-            substr($value, 1, -1)
-          );
-        }
-
-        $states = CRM_Core_PseudoConstant::stateProvince();
-        $display = NULL;
-        foreach ($checkedData as $stateID) {
-          if ($display) {
-            $display .= ', ';
-          }
-          $display .= $states[$stateID];
-        }
-        break;
-
       case 'Select Country':
-        if (empty($value)) {
-          $display = '';
-        }
-        else {
-          $display = CRM_Core_PseudoConstant::country($value);
-        }
-        break;
-
       case 'Multi-Select Country':
-        if (is_array($value)) {
-          $checkedData = $value;
+        if (strstr($html_type, 'State/Province')) {
+          $option = CRM_Core_PseudoConstant::stateProvince(FALSE, FALSE);
         }
         else {
-          $checkedData = explode(CRM_Core_DAO::VALUE_SEPARATOR,
-            substr($value, 1, -1)
-          );
+          $option = CRM_Core_PseudoConstant::country(FALSE, FALSE);
+        }
+        // process multi-select state/country field values
+        if (!is_array($value)) {
+          $value = explode(CRM_Core_DAO::VALUE_SEPARATOR, $value);
         }
 
-        $countries = CRM_Core_PseudoConstant::country();
         $display = NULL;
-        foreach ($checkedData as $countryID) {
-          if ($display) {
-            $display .= ', ';
-          }
-          $display .= $countries[$countryID];
+        foreach ($value as $data) {
+          $display .= ($display && !empty($option[$data])) ? ', ' . $option[$data] : $option[$data];
         }
         break;
 
@@ -1326,16 +1304,17 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
           $display = '';
         }
         else {
-          $display = nl2br($value);
+          $display = is_array($value) ? nl2br(implode(', ', $value)) : nl2br($value);
         }
         break;
 
       case 'Link':
+      case 'Text':
         if (empty($value)) {
           $display = '';
         }
         else {
-          $display = $value;
+          $display = is_array($value) ? implode(', ', $value) : $value;
         }
     }
     return $display ? $display : $value;
@@ -1465,6 +1444,8 @@ class CRM_Core_BAO_CustomField extends CRM_Core_DAO_CustomField {
    * @param int $cfID
    * @param int $fileID
    * @param bool $absolute
+   *
+   * @param string $multiRecordWhereClause
    *
    * @return array
    */
@@ -1651,13 +1632,7 @@ SELECT id
       $customFields[$customFieldId]['html_type'] == 'AdvMulti-Select'
     ) {
       if ($value) {
-        // Note that only during merge this is not an array,
-        // and you can directly use value, CRM-4385
-        if (is_array($value)) {
-          $value = CRM_Core_DAO::VALUE_SEPARATOR . implode(CRM_Core_DAO::VALUE_SEPARATOR,
-              array_values($value)
-            ) . CRM_Core_DAO::VALUE_SEPARATOR;
-        }
+        $value = CRM_Utils_Array::implodePadded($value);
       }
       else {
         $value = '';

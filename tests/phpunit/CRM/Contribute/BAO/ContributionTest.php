@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -35,15 +35,8 @@ require_once 'CiviTest/Custom.php';
  */
 class CRM_Contribute_BAO_ContributionTest extends CiviUnitTestCase {
 
-  public function setUp() {
-    parent::setUp();
-  }
-
-  public function teardown() {
-  }
-
   /**
-   * Create() method (create and update modes)
+   * Create() method (create and update modes).
    */
   public function testCreate() {
     $contactId = Contact::createIndividual();
@@ -90,7 +83,7 @@ class CRM_Contribute_BAO_ContributionTest extends CiviUnitTestCase {
   }
 
   /**
-   * Create() method with custom data
+   * Create() method with custom data.
    */
   public function testCreateWithCustomData() {
     $contactId = Contact::createIndividual();
@@ -258,6 +251,19 @@ class CRM_Contribute_BAO_ContributionTest extends CiviUnitTestCase {
     );
     //get honorary information
     $getHonorContact = CRM_Contribute_BAO_Contribution::getHonorContacts($honoreeContactId);
+    $this->assertEquals(array(
+      $id => array(
+        'honor_type' => 'In Honor of',
+        'honorId' => $id,
+        'display_name' => 'John Doe',
+        'type' => 'Event Fee',
+        'type_id' => '4',
+        'amount' => '$ 66.00',
+        'source' => NULL,
+        'receive_date' => date('Y-m-d 00:00:00'),
+        'contribution_status' => 'Completed',
+      ),
+    ), $getHonorContact);
 
     $this->assertDBCompareValue('CRM_Contact_DAO_Contact', $honoreeContactId, 'first_name', 'id', $firstName,
       'Database check for created honor contact record.'
@@ -284,7 +290,7 @@ class CRM_Contribute_BAO_ContributionTest extends CiviUnitTestCase {
 
   /**
    * Display sort name during.
-   * contribution batch update through profile
+   * Update multiple contributions
    * sortName();
    */
   public function testsortName() {
@@ -327,7 +333,7 @@ class CRM_Contribute_BAO_ContributionTest extends CiviUnitTestCase {
     $this->assertEquals($param['trxn_id'], $contribution->trxn_id, 'Check for transcation id creation.');
     $this->assertEquals($contactId, $contribution->contact_id, 'Check for contact id  creation.');
 
-    //display sort name during batch update
+    //display sort name during Update multiple contributions
     $sortName = CRM_Contribute_BAO_Contribution::sortName($contribution->id);
 
     $this->assertEquals('Whatson, Shane', $sortName, 'Check for sort name.');
@@ -452,6 +458,46 @@ class CRM_Contribute_BAO_ContributionTest extends CiviUnitTestCase {
     );
     $contributionID = CRM_Contribute_BAO_Contribution::checkDuplicateIds($data);
     $this->assertEquals($contributionID, $contribution->id, 'Check for duplicate transcation id .');
+
+    // Delete Contribution
+    $this->contributionDelete($contribution->id);
+    // Delete Contact
+    Contact::delete($contactId);
+  }
+
+  /**
+   * Check credit note id creation
+   * when a contribution is cancelled or refunded
+   * createCreditNoteId();
+   */
+  public function testCreateCreditNoteId() {
+    $contactId = Contact::createIndividual();
+
+    $ids = array('contribution' => NULL);
+
+    $param = array(
+      'contact_id' => $contactId,
+      'currency' => 'USD',
+      'financial_type_id' => 1,
+      'contribution_status_id' => 3,
+      'payment_instrument_id' => 1,
+      'source' => 'STUDENT',
+      'receive_date' => '20080522000000',
+      'receipt_date' => '20080522000000',
+      'id' => NULL,
+      'non_deductible_amount' => 0.00,
+      'total_amount' => 300.00,
+      'fee_amount' => 5,
+      'net_amount' => 295,
+      'trxn_id' => '76ereeswww835',
+      'invoice_id' => '93ed39a9e9hd621bs0eafe3da82',
+      'thankyou_date' => '20080522',
+    );
+
+    $creditNoteId = CRM_Contribute_BAO_Contribution::createCreditNoteId();
+    $contribution = CRM_Contribute_BAO_Contribution::create($param, $ids);
+    $this->assertEquals($contactId, $contribution->contact_id, 'Check for contact id  creation.');
+    $this->assertEquals($creditNoteId, $contribution->creditnote_id, 'Check if credit note id is created correctly.');
 
     // Delete Contribution
     $this->contributionDelete($contribution->id);

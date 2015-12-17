@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -50,40 +50,41 @@ class CRM_Grant_BAO_Query {
    * @return void
    */
   public static function select(&$query) {
-    if (($query->_mode & CRM_Contact_BAO_Query::MODE_GRANT) || !empty($query->_returnProperties)) {
-      if (!empty($query->_returnProperties['grant_status_id'])) {
-        $query->_select['grant_status_id'] = 'grant_status.id as grant_status_id';
-        $query->_element['grant_status'] = 1;
-        $query->_tables['grant_status'] = $query->_whereTables['grant_status'] = 1;
-        $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
-      }
+    if (!empty($query->_returnProperties['grant_status_id'])) {
+      $query->_select['grant_status_id'] = 'grant_status.id as grant_status_id';
+      $query->_element['grant_status'] = 1;
+      $query->_tables['grant_status'] = $query->_whereTables['grant_status'] = 1;
+      $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
+    }
 
-      if (!empty($query->_returnProperties['grant_status'])) {
-        $query->_select['grant_status'] = 'grant_status.label as grant_status';
-        $query->_element['grant_status'] = 1;
-        $query->_tables['grant_status'] = $query->_whereTables['grant_status'] = 1;
-        $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
-      }
+    if (!empty($query->_returnProperties['grant_status'])) {
+      $query->_select['grant_status'] = 'grant_status.label as grant_status';
+      $query->_element['grant_status'] = 1;
+      $query->_tables['grant_status'] = $query->_whereTables['grant_status'] = 1;
+      $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
+    }
 
-      if (!empty($query->_returnProperties['grant_type_id'])) {
-        $query->_select['grant_type_id'] = 'grant_type.id as grant_type_id';
-        $query->_element['grant_type'] = 1;
-        $query->_tables['grant_type'] = $query->_whereTables['grant_type'] = 1;
-        $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
-      }
+    if (!empty($query->_returnProperties['grant_type_id'])) {
+      $query->_select['grant_type_id'] = 'grant_type.id as grant_type_id';
+      $query->_element['grant_type'] = 1;
+      $query->_tables['grant_type'] = $query->_whereTables['grant_type'] = 1;
+      $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
+    }
 
-      if (!empty($query->_returnProperties['grant_type'])) {
-        $query->_select['grant_type'] = 'grant_type.label as grant_type';
-        $query->_element['grant_type'] = 1;
-        $query->_tables['grant_type'] = $query->_whereTables['grant_type'] = 1;
-        $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
-      }
+    if (!empty($query->_returnProperties['grant_type'])) {
+      $query->_select['grant_type'] = 'grant_type.label as grant_type';
+      $query->_element['grant_type'] = 1;
+      $query->_tables['grant_type'] = $query->_whereTables['grant_type'] = 1;
+      $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
+    }
 
-      if (!empty($query->_returnProperties['grant_note'])) {
-        $query->_select['grant_note'] = "civicrm_note.note as grant_note";
-        $query->_element['grant_note'] = 1;
-        $query->_tables['grant_note'] = 1;
-      }
+    if (!empty($query->_returnProperties['grant_note'])) {
+      $query->_select['grant_note'] = "civicrm_note.note as grant_note";
+      $query->_element['grant_note'] = 1;
+      $query->_tables['grant_note'] = 1;
+    }
+
+    if ($query->_mode & CRM_Contact_BAO_Query::MODE_GRANT) {
       $query->_select['grant_amount_requested'] = 'civicrm_grant.amount_requested as grant_amount_requested';
       $query->_select['grant_amount_granted'] = 'civicrm_grant.amount_granted as grant_amount_granted';
       $query->_select['grant_amount_total'] = 'civicrm_grant.amount_total as grant_amount_total';
@@ -184,72 +185,22 @@ class CRM_Grant_BAO_Query {
 
       case 'grant_type_id':
       case 'grant_type':
-        $grantTypes = CRM_Core_OptionGroup::values('grant_type');
-        if (is_array($value)) {
-          foreach ($value as $k => $v) {
-            if ($v) {
-              $val[] = $v;
-            }
-          }
-          if (count($val) > 0) {
-            // Overwrite $value so it works with an IN where statement.
-            $op = 'IN';
-            $value = '(' . implode(',', $val) . ')';
-          }
-        }
-        if (!empty($val)) {
-          foreach ($val as $id) {
-            $names[] = CRM_Utils_Array::value($id, $grantTypes);
-          }
-        }
-        else {
-          if (!empty($value)) {
-            $names[] = $grantTypes[$value];
-          }
-        }
-
-        $query->_where[$grouping][] = CRM_Contact_BAO_Query::buildClause('civicrm_grant.grant_type_id', $op, $value, "Integer");
-
-        $query->_qill[$grouping][] = ts('Grant Type %2 %1', array(
-            1 => implode(' ' . ts('or') . ' ', $names),
-            2 => $op,
-          ));
-        $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
-
-        return;
-
       case 'grant_status_id':
       case 'grant_status':
-        $grantStatus = CRM_Core_OptionGroup::values('grant_status');
-        if (is_array($value)) {
-          foreach ($value as $k => $v) {
-            if ($v) {
-              $val[] = $v;
-            }
-          }
-          if (count($val) > 0) {
-            // Overwrite $value so it works with an IN where statement.
-            $op = 'IN';
-            $value = '(' . implode(',', $val) . ')';
-          }
-        }
-        if (!empty($val)) {
-          foreach ($val as $id) {
-            $names[] = CRM_Utils_Array::value($id, $grantStatus);
-          }
+
+        if (strstr($name, 'type')) {
+          $name = 'grant_type_id';
+          $label = 'Grant Type(s)';
         }
         else {
-          if (!empty($value)) {
-            $names[] = $grantStatus[$value];
-          }
+          $name = 'status_id';
+          $label = 'Grant Status(s)';
         }
 
-        $query->_where[$grouping][] = CRM_Contact_BAO_Query::buildClause('civicrm_grant.status_id', $op, $value, "Integer");
+        $query->_where[$grouping][] = CRM_Contact_BAO_Query::buildClause("civicrm_grant.$name", $op, $value, "Integer");
 
-        $query->_qill[$grouping][] = ts('Grant Status %2 %1', array(
-            1 => implode(' ' . ts('or') . ' ', $names),
-            2 => $op,
-          ));
+        list($qillop, $qillVal) = CRM_Contact_BAO_Query::buildQillForFieldValue('CRM_Grant_DAO_Grant', $name, $value, $op);
+        $query->_qill[$grouping][] = ts("%1 %2 %3", array(1 => $label, 2 => $qillop, 3 => $qillVal));
         $query->_tables['civicrm_grant'] = $query->_whereTables['civicrm_grant'] = 1;
 
         return;

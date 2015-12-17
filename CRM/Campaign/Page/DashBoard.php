@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  --------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * Page for displaying Campaigns
+ * Page for displaying Campaigns.
  */
 class CRM_Campaign_Page_DashBoard extends CRM_Core_Page {
 
@@ -52,10 +50,9 @@ class CRM_Campaign_Page_DashBoard extends CRM_Core_Page {
    *
    * @return array
    */
-  public function &campaignActionLinks() {
+  public static function campaignActionLinks() {
     // check if variable _actionsLinks is populated
     if (!isset(self::$_campaignActionLinks)) {
-      $deleteExtra = ts('Are you sure you want to delete this Campaign?');
       self::$_campaignActionLinks = array(
         CRM_Core_Action::UPDATE => array(
           'name' => ts('Edit'),
@@ -88,7 +85,7 @@ class CRM_Campaign_Page_DashBoard extends CRM_Core_Page {
   /**
    * @return array
    */
-  public function &surveyActionLinks() {
+  public static function surveyActionLinks() {
     // check if variable _actionsLinks is populated
     if (!isset(self::$_surveyActionLinks)) {
       self::$_surveyActionLinks = array(
@@ -123,7 +120,7 @@ class CRM_Campaign_Page_DashBoard extends CRM_Core_Page {
   /**
    * @return array
    */
-  public function &petitionActionLinks() {
+  public static function petitionActionLinks() {
     if (!isset(self::$_petitionActionLinks)) {
       self::$_petitionActionLinks = self::surveyActionLinks();
       self::$_petitionActionLinks[CRM_Core_Action::UPDATE] = array(
@@ -299,7 +296,7 @@ class CRM_Campaign_Page_DashBoard extends CRM_Core_Page {
    *
    * @return array
    */
-  public function getSurveySummary($params = array()) {
+  public static function getSurveySummary($params = array()) {
     $surveysData = array();
 
     //get the survey.
@@ -405,7 +402,7 @@ class CRM_Campaign_Page_DashBoard extends CRM_Core_Page {
    *
    * @return array
    */
-  public function getPetitionSummary($params = array()) {
+  public static function getPetitionSummary($params = array()) {
     $config = CRM_Core_Config::singleton();
     $petitionsData = array();
 

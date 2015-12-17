@@ -70,7 +70,7 @@ function dm_install_core() {
   done
 
   dm_install_files "$repo" "$to" {agpl-3.0,agpl-3.0.exception,gpl,README,CONTRIBUTORS}.txt
-  dm_install_files "$repo" "$to" composer.json composer.lock bower.json package.json
+  dm_install_files "$repo" "$to" composer.json composer.lock bower.json package.json Civi.php
 
   mkdir -p "$to/sql"
   pushd "$repo" >> /dev/null
@@ -96,7 +96,7 @@ function dm_install_packages() {
   local to="$2"
 
   local excludes_rsync=""
-  for exclude in .git .svn _ORIGINAL_ SeleniumRC PHPUnit PhpDocumentor SymfonyComponents amavisd-new git-footnote ; do
+  for exclude in .git .svn _ORIGINAL_ SeleniumRC PHPUnit PhpDocumentor SymfonyComponents amavisd-new git-footnote PHP/CodeCoverage ; do
     excludes_rsync="--exclude=${exclude} ${excludes_rsync}"
   done
 
@@ -127,6 +127,12 @@ function dm_install_drupal() {
       sed -i'' "s/version = [1-9.]*/version = $DM_VERSION/g" $INFO
     fi
   done
+
+  for f in "$to/.gitignore" "$to/.toxic.json" ; do
+    if [ -f "$f" ]; then
+      rm -f "$f"
+    fi
+  done
 }
 
 ## Copy Joomla-integration module
@@ -140,7 +146,12 @@ function dm_install_joomla() {
   ## modules twice. The two were basically identical -- except that
   ## one included .gitignore and the omitted it. We'll now omit it
   ## consistently.
-  rm -f "$to/.gitignore"
+
+  for f in "$to/.gitignore" "$to/.toxic.json" ; do
+    if [ -f "$f" ]; then
+      rm -f "$f"
+    fi
+  done
 }
 
 ## usage: dm_install_l10n <l10n_repo_path> <to_path>
@@ -177,6 +188,7 @@ function dm_install_wordpress() {
     --exclude=.git \
     --exclude=.svn \
     --exclude=civicrm.config.php.wordpress \
+    --exclude=.toxic.json \
     --exclude=.gitignore \
     --exclude=civicrm \
     "$repo/./"  "$to/./"

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Core_OptionGroup {
   static $_values = array();
@@ -272,9 +270,6 @@ WHERE  v.option_group_id = g.id
    *
    *
    * @param bool $flip
-   *
-   * @return void
-   *
    */
   public static function lookupValues(&$params, &$names, $flip = FALSE) {
     foreach ($names as $postName => $value) {
@@ -329,6 +324,8 @@ WHERE  v.option_group_id = g.id
   }
 
   /**
+   * @deprecated - use CRM_Core_Pseudoconstant::getLabel
+   *
    * @param string $groupName
    * @param $value
    * @param bool $onlyActiveValue
@@ -566,27 +563,6 @@ DELETE g, v
 
   /**
    * @param string $groupName
-   * @param $value
-   *
-   * @return null|string
-   */
-  public static function optionLabel($groupName, $value) {
-    $query = "
-SELECT v.label
-  FROM civicrm_option_group g,
-       civicrm_option_value v
- WHERE g.id = v.option_group_id
-   AND g.name  = %1
-   AND v.value = %2";
-    $params = array(
-      1 => array($groupName, 'String'),
-      2 => array($value, 'String'),
-    );
-    return CRM_Core_DAO::singleValueQuery($query, $params);
-  }
-
-  /**
-   * @param string $groupName
    * @param $fieldValue
    * @param string $field
    * @param string $fieldType
@@ -631,12 +607,9 @@ WHERE  v.option_group_id = g.id
                  'description',
                ) as $fld) {
         $row[$fld] = $dao->$fld;
-      }
-    }
-
-    if ($localize) {
-      foreach (array('label', 'description') as $f) {
-        $row[$f] = ts($row[$f]);
+        if ($localize && in_array($fld, array('label', 'description'))) {
+          $row[$fld] = ts($row[$fld]);
+        }
       }
     }
 

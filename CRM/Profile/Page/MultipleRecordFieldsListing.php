@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -171,6 +171,7 @@ class CRM_Profile_Page_MultipleRecordFieldsListing extends CRM_Core_Page_Basic {
   public function browse() {
     $dateFields = NULL;
     $cgcount = 0;
+    $attributes = array();
     $dateFieldsVals = NULL;
     if ($this->_pageViewType == 'profileDataView' && $this->_profileId) {
       $fields = CRM_Core_BAO_UFGroup::getFields($this->_profileId, FALSE, NULL,
@@ -227,6 +228,7 @@ class CRM_Profile_Page_MultipleRecordFieldsListing extends CRM_Core_Page_Basic {
         'time_format',
         'default_value',
         'is_required',
+        'is_view',
       );
       foreach ($fieldIDs as $key => $fieldID) {
         $fieldIDs[$key] = !is_numeric($fieldID) ? CRM_Core_BAO_CustomField::getKeyID($fieldID) : $fieldID;
@@ -251,6 +253,7 @@ class CRM_Profile_Page_MultipleRecordFieldsListing extends CRM_Core_Page_Basic {
         $options[$fieldIDs[$key]]['attributes']['data_type'] = $returnValues['data_type'];
         $options[$fieldIDs[$key]]['attributes']['is_required'] = !empty($returnValues['is_required']);
         $options[$fieldIDs[$key]]['attributes']['default_value'] = CRM_Utils_Array::value('default_value', $returnValues);
+        $options[$fieldIDs[$key]]['attributes']['is_view'] = CRM_Utils_Array::value('is_view', $returnValues);
 
         $options[$fieldIDs[$key]]['attributes']['format']
           = $options[$fieldIDs[$key]]['attributes']['date_format'] = CRM_Utils_Array::value('date_format', $returnValues);
@@ -307,11 +310,11 @@ class CRM_Profile_Page_MultipleRecordFieldsListing extends CRM_Core_Page_Basic {
                 //set date and time format
                 switch ($timeFormat) {
                   case 1:
-                    $dateFormat[] = 'g:iA';
+                    $dateFormat[1] = 'g:iA';
                     break;
 
                   case 2:
-                    $dateFormat[] = 'G:i';
+                    $dateFormat[1] = 'G:i';
                     break;
 
                   default:
@@ -334,7 +337,7 @@ class CRM_Profile_Page_MultipleRecordFieldsListing extends CRM_Core_Page_Basic {
               // TODO: Not all widget types and validation rules are supported by crmEditable so some fields will not be in-place editable
               $fieldAttributes = array('class' => "crmf-custom_{$fieldId}_$recId");
               $editable = FALSE;
-              if ($linkAction & CRM_Core_Action::UPDATE) {
+              if (!$options[$fieldId]['attributes']['is_view'] && $linkAction & CRM_Core_Action::UPDATE) {
                 $spec = $options[$fieldId]['attributes'];
                 switch ($spec['html_type']) {
                   case 'Text':

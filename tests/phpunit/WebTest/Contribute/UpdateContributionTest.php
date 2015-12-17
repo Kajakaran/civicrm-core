@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -48,12 +48,12 @@ class WebTest_Contribute_UpdateContributionTest extends CiviSeleniumTestCase {
     $this->click("_qf_Search_refresh");
 
     $this->waitForElementPresent("xpath=//*[@id='Search']//div[@id='contributionSearch']");
-    $contriIDOff = explode('&', $this->getAttribute("xpath=//div[@id='contributionSearch']//table[@class='selector row-highlight']/tbody/tr[1]/td[11]/span/a[1]@href"));
+    $contriIDOff = explode('&', $this->getAttribute("xpath=//div[@id='contributionSearch']//table[@class='selector row-highlight']/tbody/tr[1]//td//span/a[1]@href"));
     if (!empty($contriIDOff)) {
       $contriIDOff = substr($contriIDOff[1], (strrpos($contriIDOff[1], '=') + 1));
     }
 
-    $this->clickLink("xpath=//tr[@id='rowid{$contriIDOff}']/td[11]/span/a[2]", "total_amount", FALSE);
+    $this->clickLink("xpath=//tr[@id='rowid{$contriIDOff}']//td//span/a[2]", "total_amount", FALSE);
     $this->waitForAjaxContent();
     $this->type("total_amount", "90");
     $this->clickLink('_qf_Contribution_upload', '', FALSE);
@@ -212,7 +212,6 @@ class WebTest_Contribute_UpdateContributionTest extends CiviSeleniumTestCase {
     $this->openCiviPage("admin/contribute/managePremiums", "action=add&reset=1");
     // add premium
     $this->addPremium($premiumName, $sku, $amount, $price, $cost, $financialType['name']);
-
     // add contribution with premium
     $this->openCiviPage("contribute/add", "reset=1&action=add&context=standalone");
 
@@ -240,11 +239,12 @@ class WebTest_Contribute_UpdateContributionTest extends CiviSeleniumTestCase {
     $this->waitForElementPresent("product_name_0");
     $this->select('product_name_0', "value=0");
     // Clicking save.
-    $this->clickLink("_qf_Contribution_upload", "xpath=//div[@class='view-content']//table[@class='selector row-highlight']//tbody/tr[1]/td[7][not(text())]", FALSE);
+    $this->click("_qf_Contribution_upload");
+    $this->waitForElementPresent("xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[8]//span/a[text()='View']");
 
     //Assertions
     $actualAmount = $this->_getPremiumActualCost($contId, $from, $to, NULL, "'civicrm_contribution'");
-    $this->assertEquals($actualAmount, $cost, "Verify actual cost for deleted premium");
+    $this->assertEquals($actualAmount, NULL, "Verify actual cost for deleted premium");
   }
 
   public function testChangePaymentInstrument() {
@@ -276,8 +276,8 @@ class WebTest_Contribute_UpdateContributionTest extends CiviSeleniumTestCase {
     $this->webtestLogin();
     $amount = 100.00;
     $this->_testOfflineContribution($amount);
-    $this->waitForElementPresent("xpath=//div[@class='view-content']//table[@class='selector row-highlight']/tbody/tr[1]/td[8]/span/a[text()='Edit']");
-    $this->clickAjaxLink("xpath=//div[@class='view-content']//table[@class='selector row-highlight']/tbody/tr[1]/td[8]/span/a[text()='Edit']", '_qf_Contribution_cancel-bottom');
+    $this->waitForElementPresent("xpath=//div[@class='view-content']//table[@class='selector row-highlight']/tbody/tr[1]/td[8]/span//a[text()='Edit']");
+    $this->clickAjaxLink("xpath=//form[@class='CRM_Contribute_Form_Search crm-search-form']/div[2]/table[@class='selector row-highlight']/tbody/tr[1]/td[8]/span/a[text()='Edit']", '_qf_Contribution_cancel-bottom');
     //Contribution status
     $this->select("contribution_status_id", "label=Refunded");
     $contId = explode('&id=', $this->getAttribute("xpath=//div[@class='view-content']//table[@class='selector row-highlight']/tbody/tr[1]/td[8]/span/a[text()='Edit']@href"));
@@ -487,7 +487,7 @@ class WebTest_Contribute_UpdateContributionTest extends CiviSeleniumTestCase {
     // Is status message correct?
     $this->checkCRMAlert("The contribution record has been saved.");
 
-    $this->waitForElementPresent("xpath=//div[@class='view-content']//table[@class='selector row-highlight']//tbody/tr[1]/td[8]/span/a[text()='View']");
+    $this->waitForElementPresent("xpath=//form[@class='CRM_Contribute_Form_Search crm-search-form']/div[2]/table[@class='selector row-highlight']/tbody/tr[1]/td[8]/span//a[text()='View']");
     // verify if Membership is created
 
     //click through to the Membership view screen

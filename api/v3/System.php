@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -83,7 +83,53 @@ function _civicrm_api3_system_flush_spec(&$params) {
  * @see http://wiki.civicrm.org/confluence/display/CRM/API+Architecture+Standards
  */
 function _civicrm_api3_system_check_spec(&$spec) {
-  // $spec['magicword']['api.required'] = 1;
+  $spec['id'] = array(
+    'title' => 'ID',
+    'description' => 'Not a real identifier - do not use',
+    'type' => CRM_Utils_Type::T_INT,
+  );
+  $spec['name'] = array(
+    'title' => 'Name',
+    'description' => 'Unique identifier',
+    'type' => CRM_Utils_Type::T_STRING,
+  );
+  $spec['title'] = array(
+    'title' => 'Title',
+    'description' => 'Short title text',
+    'type' => CRM_Utils_Type::T_STRING,
+  );
+  $spec['message'] = array(
+    'title' => 'Message',
+    'description' => 'Long description html',
+    'type' => CRM_Utils_Type::T_STRING,
+  );
+  $spec['help'] = array(
+    'title' => 'Help',
+    'description' => 'Optional extra help (html string)',
+    'type' => CRM_Utils_Type::T_STRING,
+  );
+  $spec['severity'] = array(
+    'title' => 'Severity',
+    'description' => 'Psr\Log\LogLevel string',
+    'type' => CRM_Utils_Type::T_STRING,
+    'options' => array_combine(CRM_Utils_Check::getSeverityList(), CRM_Utils_Check::getSeverityList()),
+  );
+  $spec['severity_id'] = array(
+    'title' => 'Severity ID',
+    'description' => 'Integer representation of Psr\Log\LogLevel',
+    'type' => CRM_Utils_Type::T_INT,
+    'options' => CRM_Utils_Check::getSeverityList(),
+  );
+  $spec['is_visible'] = array(
+    'title' => 'is visible',
+    'description' => '0 if message has been hidden by the user',
+    'type' => CRM_Utils_Type::T_BOOLEAN,
+  );
+  $spec['hidden_until'] = array(
+    'title' => 'Hidden_until',
+    'description' => 'When will hidden message be visible again?',
+    'type' => CRM_Utils_Type::T_DATE,
+  );
 }
 
 /**
@@ -98,13 +144,19 @@ function _civicrm_api3_system_check_spec(&$spec) {
  * @throws API_Exception
  */
 function civicrm_api3_system_check($params) {
-  $returnValues = array();
-  foreach (CRM_Utils_Check::singleton()->checkAll() as $message) {
-    $returnValues[] = $message->toArray();
+  // array(array('name'=> $, 'severity'=>$, ...))
+  $id = 1;
+  $returnValues = $fields = array();
+  _civicrm_api3_system_check_spec($fields);
+
+  // array(CRM_Utils_Check_Message)
+  $messages = CRM_Utils_Check::checkAll();
+
+  foreach ($messages as $msg) {
+    $returnValues[] = $msg->toArray() + array('id' => $id++);
   }
 
-  // Spec: civicrm_api3_create_success($values = 1, $params = array(), $entity = NULL, $action = NULL)
-  return civicrm_api3_create_success($returnValues, $params, 'System', 'Check');
+  return _civicrm_api3_basic_array_get('systemCheck', $params, $returnValues, "id", array_keys($fields));
 }
 
 /**
@@ -175,11 +227,126 @@ function _civicrm_api3_system_log_spec(&$params) {
  * @return array
  */
 function civicrm_api3_system_get($params) {
+  $config = CRM_Core_Config::singleton();
   $returnValues = array(
     array(
-      'version' => CRM_Utils_System::version(),
-      'uf' => CIVICRM_UF,
+      'version' => CRM_Utils_System::version(), // deprecated in favor of civi.version
+      'uf' => CIVICRM_UF, // deprecated in favor of cms.type
+      'php' => array(
+        'version' => phpversion(),
+        'time' => time(),
+        'tz' => date_default_timezone_get(),
+        'extensions' => get_loaded_extensions(),
+        'ini' => _civicrm_api3_system_get_redacted_ini(),
+      ),
+      'mysql' => array(
+        'version' => CRM_Core_DAO::singleValueQuery('SELECT @@version'),
+        'time' => CRM_Core_DAO::singleValueQuery('SELECT unix_timestamp()'),
+        'vars' => _civicrm_api3_system_get_redacted_mysql(),
+      ),
+      'cms' => array(
+        'version' => $config->userSystem->getVersion(),
+        'type' => CIVICRM_UF,
+        'modules' => CRM_Core_Module::collectStatuses($config->userSystem->getModules()),
+      ),
+      'civi' => array(
+        'version' => CRM_Utils_System::version(),
+        'dev' => (bool) CRM_Utils_System::isDevelopment(),
+        'components' => array_keys(CRM_Core_Component::getEnabledComponents()),
+        'extensions' => preg_grep(
+          '/^uninstalled$/',
+          CRM_Extension_System::singleton()->getManager()->getStatuses(),
+          PREG_GREP_INVERT
+        ),
+        'exampleUrl' => CRM_Utils_System::url('civicrm/example', NULL, TRUE, NULL, FALSE),
+      ),
     ),
   );
+
   return civicrm_api3_create_success($returnValues, $params, 'System', 'get');
+}
+
+/**
+ * Generate a sanitized/anonymized/redacted dump of the PHP configuration.
+ *
+ * Some INI fields contain site-identifying information (SII) -- e.g. URLs,
+ * hostnames, file paths, IP addresses, passwords, or free-form comments
+ * could be used to identify a site or gain access to its resources.
+ *
+ * A number of INI fields have been examined to determine whether they
+ * contain SII. Approved fields are put in a whitelist; all other fields
+ * are redacted.
+ *
+ * Redaction hides the substance of a field but does not completely omit
+ * all information. Consider the field 'mail.log' - setting this field
+ * has a functional effect (it enables or disables the logging behavior)
+ * and also points to particular file. Empty values (FALSE/NULL/0/"")
+ * will pass through redaction, but all other values will be replaced
+ * by a string (eg "REDACTED"). This roughly indicates whether the
+ * option is enabled/disabled without giving away its content.
+ *
+ * @return array
+ */
+function _civicrm_api3_system_get_redacted_ini() {
+  static $whitelist = NULL;
+  if ($whitelist === NULL) {
+    $whitelist = _civicrm_api3_system_get_whitelist(__DIR__ . '/System/ini-whitelist.txt');
+  }
+
+  $inis = ini_get_all(NULL, FALSE);
+  $result = array();
+  foreach ($inis as $k => $v) {
+    if (empty($v) || in_array($k, $whitelist)) {
+      $result[$k] = $v;
+    }
+    else {
+      $result[$k] = 'REDACTED';
+    }
+  }
+
+  return $result;
+}
+
+/**
+ * Generate ae sanitized/anonymized/redacted dump of MySQL configuration.
+ *
+ * @return array
+ * @see _civicrm_api3_system_get_redacted_ini
+ */
+function _civicrm_api3_system_get_redacted_mysql() {
+  static $whitelist = NULL;
+  if ($whitelist === NULL) {
+    $whitelist = _civicrm_api3_system_get_whitelist(__DIR__ . '/System/mysql-whitelist.txt');
+  }
+
+  $inis = ini_get_all(NULL, FALSE);
+  $result = array();
+  $dao = CRM_Core_DAO::executeQuery('SHOW VARIABLES');
+  while ($dao->fetch()) {
+    if (empty($dao->Variable_name) || in_array($dao->Variable_name, $whitelist)) {
+      $result[$dao->Variable_name] = $dao->Value;
+    }
+    else {
+      $result[$dao->Variable_name] = 'REDACTED';
+    }
+  }
+
+  return $result;
+}
+
+/**
+ * Read a whitelist.
+ *
+ * @param string $whitelistFile
+ *   Name of a file. Each line is a field name. Comments begin with "#".
+ * @return array
+ */
+function _civicrm_api3_system_get_whitelist($whitelistFile) {
+  $whitelist = array_filter(
+    explode("\n", file_get_contents($whitelistFile)),
+    function ($k) {
+      return !empty($k) && !preg_match('/^\s*#/', $k);
+    }
+  );
+  return $whitelist;
 }

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
@@ -43,7 +41,7 @@ class CRM_Utils_JSON {
    * @param mixed $input
    */
   public static function output($input) {
-    header('Content-Type: application/json');
+    CRM_Utils_System::setHttpHeader('Content-Type', 'application/json');
     echo json_encode($input);
     CRM_Utils_System::civiExit();
   }
@@ -70,19 +68,19 @@ class CRM_Utils_JSON {
     $sOutput .= '"iTotalRecords": ' . $iTotal . ', ';
     $sOutput .= '"iTotalDisplayRecords": ' . $iFilteredTotal . ', ';
     $sOutput .= '"aaData": [ ';
-    foreach ($params as $key => $value) {
+    foreach ((array) $params as $key => $value) {
       $addcomma = FALSE;
       $sOutput .= "[";
       foreach ($selectorElements as $element) {
         if ($addcomma) {
           $sOutput .= ",";
         }
-        //CRM-7130 --lets addslashes to only double quotes,
-        //since we are using it to quote the field value.
-        //str_replace helps to provide a break for new-line
+        // CRM-7130 --lets addslashes to only double quotes,
+        // since we are using it to quote the field value.
+        // str_replace helps to provide a break for new-line
         $sOutput .= '"' . addcslashes(str_replace(array("\r\n", "\n", "\r"), '<br />', $value[$element]), '"\\') . '"';
 
-        //remove extra spaces and tab character that breaks dataTable CRM-12551
+        // remove extra spaces and tab character that breaks dataTable CRM-12551
         $sOutput = preg_replace("/\s+/", " ", $sOutput);
         $addcomma = TRUE;
       }

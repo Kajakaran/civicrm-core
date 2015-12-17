@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,20 +29,15 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * This class generates form components for Payment-Instrument
- *
+ * This class generates form components for Payment-Instrument.
  */
 class CRM_Contribute_Form_ContributionView extends CRM_Core_Form {
 
   /**
    * Set variables up before form is built.
-   *
-   * @return void
    */
   public function preProcess() {
     $id = $this->get('id');
@@ -52,6 +47,22 @@ class CRM_Contribute_Form_ContributionView extends CRM_Core_Form {
     $this->assign('context', $context);
 
     CRM_Contribute_BAO_Contribution::getValues($params, $values, $ids);
+    if (CRM_Financial_BAO_FinancialType::isACLFinancialTypeStatus() && $this->_action & CRM_Core_Action::VIEW) {
+      $financialTypeID = CRM_Contribute_PseudoConstant::financialType($values['financial_type_id']);
+      CRM_Financial_BAO_FinancialType::checkPermissionedLineItems($id, 'view');
+      if (CRM_Financial_BAO_FinancialType::checkPermissionedLineItems($id, 'edit', FALSE)) {
+        $this->assign('canEdit', TRUE);
+      }
+      if (CRM_Financial_BAO_FinancialType::checkPermissionedLineItems($id, 'delete', FALSE)) {
+        $this->assign('canDelete', TRUE);
+      }
+      if (!CRM_Core_Permission::check('view contributions of type ' . $financialTypeID)) {
+        CRM_Core_Error::fatal(ts('You do not have permission to access this page.'));
+      }
+    }
+    elseif ($this->_action & CRM_Core_Action::VIEW) {
+      $this->assign('noACL', TRUE);
+    }
     CRM_Contribute_BAO_Contribution::resolveDefaults($values);
     $cancelledStatus = TRUE;
     $status = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
@@ -156,7 +167,7 @@ class CRM_Contribute_Form_ContributionView extends CRM_Core_Form {
 
     // assign values to the template
     $this->assign($values);
-    $invoiceSettings = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::CONTRIBUTE_PREFERENCES_NAME, 'contribution_invoice_settings');
+    $invoiceSettings = Civi::settings()->get('contribution_invoice_settings');
     $invoicing = CRM_Utils_Array::value('invoicing', $invoiceSettings);
     $this->assign('invoicing', $invoicing);
     if ($invoicing && isset($values['tax_amount'])) {
@@ -204,8 +215,6 @@ class CRM_Contribute_Form_ContributionView extends CRM_Core_Form {
 
   /**
    * Build the form object.
-   *
-   * @return void
    */
   public function buildQuickForm() {
 

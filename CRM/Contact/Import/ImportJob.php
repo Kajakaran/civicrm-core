@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -9,7 +9,7 @@
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2009.                                       |
+ | Version 3, 19 November 2009 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -29,12 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * This class acts like a psuedo-BAO for transient import job tables
+ * This class acts like a psuedo-BAO for transient import job tables.
  */
 class CRM_Contact_Import_ImportJob {
 
@@ -413,7 +411,6 @@ class CRM_Contact_Import_ImportJob {
 
       $tagParams = array(
         'name' => $newTagName,
-        'title' => $newTagName,
         'description' => $newTagDesc,
         'is_selectable' => TRUE,
         'used_for' => 'civicrm_contact',

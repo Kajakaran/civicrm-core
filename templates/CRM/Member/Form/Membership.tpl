@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -31,9 +31,7 @@
   </div>
 {/if}
 <div class="spacer"></div>
-{if $cdType }
-  {include file="CRM/Custom/Form/CustomData.tpl"}
-{elseif $priceSetId}
+{if $priceSetId}
   {include file="CRM/Price/Form/PriceSet.tpl" context="standalone" extends="Membership"}
   {literal}
   <script type="text/javascript">
@@ -62,7 +60,7 @@
   </div>
   {/if}
   {if $membershipMode}
-  <div id="help">
+  <div class="help">
     {ts 1=$displayName 2=$registerMode}Use this form to submit Membership Record on behalf of %1. <strong>A %2 transaction will be submitted</strong> using the selected payment processor.{/ts}
   </div>
   {/if}
@@ -173,18 +171,20 @@
           </tr>
           <tr class="crm-membership-form-block-record_contribution"><td colspan="2">
             <fieldset id="recordContribution"><legend>{ts}Membership Payment and Receipt{/ts}</legend>
-         {/if}
+        {/if}
         {include file="CRM/Member/Form/MembershipCommon.tpl"}
 
-        {if $emailExists and $outBound_option != 2}
+        {if $emailExists and $isEmailEnabledForSite}
           <tr id="send-receipt" class="crm-membership-form-block-send_receipt">
             <td class="label">{$form.send_receipt.label}</td><td>{$form.send_receipt.html}<br />
-            <span class="description">{ts 1=$emailExists}Automatically email a membership confirmation and receipt to %1?{/ts}</span></td>
+            <span class="description">{ts 1=$emailExists}Automatically email a membership confirmation and receipt to %1 ?{/ts} {ts}OR if the payment is from a different contact, this email will only go to them.{/ts}</span></td>
+            <span class="auto-renew-text">{ts}For auto-renewing memberships the emails are sent when each payment is received{/ts}</span>
           </tr>
-          {elseif $context eq 'standalone' and $outBound_option != 2}
+          {elseif $context eq 'standalone' and $isEmailEnabledForSite}
           <tr id="email-receipt" style="display:none;">
             <td class="label">{$form.send_receipt.label}</td><td>{$form.send_receipt.html}<br />
-            <span class="description">{ts}Automatically email a membership confirmation and receipt to {/ts}<span id="email-address"></span>?</span></td>
+            <span class="description">{ts}Automatically email a membership confirmation and receipt to {/ts}<span id="email-address"></span>? {ts}OR if the payment is from a different contact, this email will only go to them.{/ts}</span></td>
+            <span class="auto-renew-text">{ts}For auto-renewing memberships the emails are sent when each payment is received{/ts}</span>
           </tr>
         {/if}
         <tr id="fromEmail" style="display:none;">
@@ -256,6 +256,7 @@
       function setPaymentBlock(mode, checkboxEvent) {
         var memType = parseInt(cj('#membership_type_id_1').val( ));
         var isPriceSet = 0;
+        var existingAmount = {/literal}{if !empty($onlinePendingContributionId)}1{else}0{/if}{literal};
 
         if ( cj('#price_set_id').length > 0 && cj('#price_set_id').val() ) {
           isPriceSet = 1;
@@ -266,7 +267,7 @@
         }
 
         var allMemberships = {/literal}{$allMembershipInfo}{literal};
-        if ( !mode ) {
+        if (!mode) {
           //check the record_contribution checkbox if membership is a paid one
           {/literal}{if $action eq 1}{literal}
           if (!checkboxEvent) {
@@ -290,25 +291,29 @@
         var taxRates = JSON.parse(taxRates);
         var taxRate = taxRates[allMemberships[memType]['financial_type_id']];
         var currency = '{/literal}{$currency}{literal}';
-	var taxAmount = (taxRate/100)*allMemberships[memType]['total_amount_numeric'];
-	taxAmount = isNaN (taxAmount) ? 0:taxAmount;
-        if ( term ) {
+        var taxAmount = (taxRate/100)*allMemberships[memType]['total_amount_numeric'];
+        taxAmount = isNaN (taxAmount) ? 0:taxAmount;
+        if (term) {
           if (!taxRate) {
             var feeTotal = allMemberships[memType]['total_amount_numeric'] * term;
           }
           else {
-      var feeTotal = Number((taxRate/100) * (allMemberships[memType]['total_amount_numeric'] * term))+Number(allMemberships[memType]['total_amount_numeric'] * term );
+            var feeTotal = Number((taxRate/100) * (allMemberships[memType]['total_amount_numeric'] * term))+Number
+           (allMemberships[memType]['total_amount_numeric'] * term );
           }
           cj("#total_amount").val(CRM.formatMoney(feeTotal, true));
         }
         else {
-    if (taxRate) {
+          if (taxRate) {
             var feeTotal = parseFloat(Number((taxRate/100) * allMemberships[memType]['total_amount'])+Number(allMemberships[memType]['total_amount_numeric'])).toFixed(2);
-      cj("#total_amount").val(CRM.formatMoney(feeTotal, true));
+            cj("#total_amount").val(CRM.formatMoney(feeTotal, true));
           }
           else {
-      var feeTotal = allMemberships[memType]['total_amount'];
-      cj("#total_amount").val( allMemberships[memType]['total_amount'] );
+            var feeTotal = allMemberships[memType]['total_amount'];
+            if (!existingAmount) {
+              // CRM-16680 don't set amount if there is an existing contribution.
+              cj("#total_amount").val(allMemberships[memType]['total_amount']);
+            }
           }
         }
         var taxMessage = taxRate!=undefined ? 'Includes '+taxTerm+' amount of '+currency+' '+taxAmount:'';
@@ -374,35 +379,36 @@
       }
     }
 
+    function showEmailOptions() {
+      {/literal}
+      // @todo emailExists refers to the primary contact for the page.
+      // elsewhere some script determines if there is a paying contact the
+      // email should go to instead (e.g gift membership). This should be checked for here
+      // and that merged into that code as currently behaviour is inconsistent.
+      var emailExists = '{$emailExists}';
+      var isStandalone = ('{$context}' == 'standalone');
+      var isEmailEnabledForSite = {$isEmailEnabledForSite};
+
+      {literal}
+      var isEmailable = (isEmailEnabledForSite && (emailExists || isStandalone));
+
+      if (isEmailable && cj('#send_receipt').prop('checked') && !cj('#auto_renew').prop('checked')) {
+        // Hide extra message and from email for recurring as they cannot be stored until use.
+        cj('#notice').show();
+        cj('#fromEmail').show();
+      }
+      else {
+        cj('#notice').hide();
+        cj('#fromEmail').hide();
+      }
+    }
     </script>
-    {/literal}
-
-    {if ($emailExists and $outBound_option != 2) OR $context eq 'standalone' }
-    {include file="CRM/common/showHideByFieldValue.tpl"
-    trigger_field_id    ="send_receipt"
-    trigger_value       =""
-    target_element_id   ="notice"
-    target_element_type ="table-row"
-    field_type          ="radio"
-    invert              = 0
-    }
-    {include file="CRM/common/showHideByFieldValue.tpl"
-    trigger_field_id    ="send_receipt"
-    trigger_value       =""
-    target_element_id   ="fromEmail"
-    target_element_type ="table-row"
-    field_type          ="radio"
-    invert              = 0
-    }
-    {/if}
-    {literal}
-
     <script type="text/javascript">
 
     {/literal}{if !$membershipMode}{literal}
     showHideMemberStatus();
     function showHideMemberStatus() {
-      if ( cj( "#is_override" ).prop('checked' ) ) {
+      if ( cj( "#is_override" ).prop('checked') ) {
         cj('#memberStatus').show( );
         cj('#memberStatus_show').hide( );
       }
@@ -413,7 +419,7 @@
     }
     {/literal}{/if}
 
-    {if $context eq 'standalone' and $outBound_option != 2 }
+    {if $context eq 'standalone' and $isEmailEnabledForSite }
     {literal}
     CRM.$(function($) {
       var $form = $("form.{/literal}{$form.formClass}{literal}");
@@ -449,6 +455,7 @@
           if ( $(this).attr( 'readonly' ) ) {
             $(this).prop('checked', true );
           }
+          showEmailOptions();
         });
       }
 
@@ -495,12 +502,10 @@
     {/literal}
 
     {if $membershipMode or $action eq 2}
+
+    buildAutoRenew( null, null, '{$membershipMode}');
     {literal}
-
-    buildAutoRenew( null, null );
-
-    function buildAutoRenew( membershipType, processorId ) {
-      var mode   = {/literal}'{$membershipMode}'{literal};
+    function buildAutoRenew( membershipType, processorId, mode ) {
       var action = {/literal}'{$action}'{literal};
 
       //for update lets hide it when not already recurring.
@@ -525,6 +530,7 @@
       if ( !processorId || !membershipType ) {
         cj("#auto_renew").prop('checked', false );
         cj("#autoRenew").hide( );
+        showEmailOptions();
         return;
       }
 
@@ -534,7 +540,7 @@
 
       if ( !currentOption || !recurProcessors[processorId] ) {
         cj("#auto_renew").prop('checked', false );
-        cj("#autoRenew").hide( );
+        cj("#autoRenew").hide();
         return;
       }
 
@@ -554,36 +560,12 @@
         cj("#auto_renew").prop('checked', false );
         cj("#autoRenew").hide( );
       }
-
-      //play w/ receipt option.
-      if ( cj("#auto_renew").prop('checked' ) ) {
-        cj("#notice").hide( );
-        cj("#send_receipt").prop('checked', false );
-        cj("#send-receipt").hide( );
-      }
-      else {
-        cj("#send-receipt").show( );
-        if ( cj("#send_receipt").prop('checked' ) ) {
-          cj("#notice").show( );
-        }
-      }
+      showEmailOptions();
     }
     {/literal}
     {/if}
 
     {literal}
-    function buildReceiptANDNotice( ) {
-      if ( cj("#auto_renew").prop('checked' ) ) {
-        cj("#notice").hide( );
-        cj("#send-receipt").hide( );
-      }
-      else {
-        cj("#send-receipt").show( );
-        if ( cj("#send_receipt").prop('checked' ) ) {
-          cj("#notice").show( );
-        }
-      }
-    }
 
     var customDataType = '{/literal}{$customDataType}{literal}';
 

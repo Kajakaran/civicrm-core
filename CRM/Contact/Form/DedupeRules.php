@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,18 +29,14 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * This class generates form components for DedupeRules
- *
+ * This class generates form components for DedupeRules.
  */
 class CRM_Contact_Form_DedupeRules extends CRM_Admin_Form {
   const RULES_COUNT = 5;
   protected $_contactType;
-  protected $_defaults = array();
   protected $_fields = array();
   protected $_rgid;
 
@@ -53,8 +49,6 @@ class CRM_Contact_Form_DedupeRules extends CRM_Admin_Form {
 
   /**
    * Pre processing.
-   *
-   * @return void
    */
   public function preProcess() {
     // Ensure user has permission to be here
@@ -72,7 +66,7 @@ class CRM_Contact_Form_DedupeRules extends CRM_Admin_Form {
 
       $this->_defaults['threshold'] = $rgDao->threshold;
       $this->_contactType = $rgDao->contact_type;
-      $this->_defaults['used'] = CRM_Utils_Array::key($rgDao->used, $this->_options);
+      $this->_defaults['used'] = $rgDao->used;
       $this->_defaults['title'] = $rgDao->title;
       $this->_defaults['name'] = $rgDao->name;
       $this->_defaults['is_reserved'] = $rgDao->is_reserved;
@@ -102,8 +96,6 @@ class CRM_Contact_Form_DedupeRules extends CRM_Admin_Form {
 
   /**
    * Build the form object.
-   *
-   * @return void
    */
   public function buildQuickForm() {
     $this->addField('title', array('label' => ts('Rule Name')), TRUE);
@@ -115,8 +107,7 @@ class CRM_Contact_Form_DedupeRules extends CRM_Admin_Form {
     $disabled = array();
     $reserved = $this->addField('is_reserved', array('label' => ts('Reserved?')));
     if (!empty($this->_defaults['is_reserved'])) {
-      //$reserved->freeze();
-      $disabled = array('disabled' => TRUE);
+      $reserved->freeze();
     }
 
     $attributes = array('class' => 'two');
@@ -157,13 +148,9 @@ class CRM_Contact_Form_DedupeRules extends CRM_Admin_Form {
    */
   public static function formRule($fields, $files, $self) {
     $errors = array();
-    if (!empty($fields['is_reserved'])) {
-      return TRUE;
-    }
-
     $fieldSelected = FALSE;
     for ($count = 0; $count < self::RULES_COUNT; $count++) {
-      if (!empty($fields["where_$count"])) {
+      if (!empty($fields["where_$count"]) || (isset($self->_defaults['is_reserved']) && !empty($self->_defaults["where_$count"]))) {
         $fieldSelected = TRUE;
         break;
       }
@@ -192,9 +179,6 @@ class CRM_Contact_Form_DedupeRules extends CRM_Admin_Form {
 
   /**
    * Process the form submission.
-   *
-   *
-   * @return void
    */
   public function postProcess() {
     $values = $this->exportValues();
@@ -236,7 +220,7 @@ UPDATE civicrm_dedupe_rule_group
     }
 
     // lets skip updating of fields for reserved dedupe group
-    if ($rgDao->is_reserved) {
+    if (CRM_Utils_Array::value('is_reserved', $this->_defaults)) {
       CRM_Core_Session::setStatus(ts("The rule '%1' has been saved.", array(1 => $rgDao->title)), ts('Saved'), 'success');
       return;
     }

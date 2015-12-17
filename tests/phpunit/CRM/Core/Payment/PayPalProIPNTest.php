@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -38,10 +38,19 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
   protected $_contributionRecurID;
   protected $_contributionPageID;
   protected $_paymentProcessorID;
+  /**
+   * IDs of entities created to support the tests.
+   *
+   * @var array
+   */
+  protected $ids = array();
 
+  /**
+   * Set up function.
+   */
   public function setUp() {
     parent::setUp();
-    $this->_paymentProcessorID = $this->paymentProcessorCreate();
+    $this->_paymentProcessorID = $this->paymentProcessorCreate(array('is_test' => 0));
     $this->_contactID = $this->individualCreate();
     $contributionPage = $this->callAPISuccess('contribution_page', 'create', array(
         'title' => "Test Contribution Page",
@@ -53,12 +62,18 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
     $this->_contributionPageID = $contributionPage['id'];
   }
 
+  /**
+   * Tear down function.
+   */
   public function tearDown() {
     $this->quickCleanUpFinancialEntities();
   }
 
   /**
-   * Test IPN response updates contribution_recur & contribution for first & second contribution
+   * Test IPN response updates contribution_recur & contribution for first & second contribution.
+   *
+   * The scenario is that a pending contribution exists and the first call will update it to completed.
+   * The second will create a new contribution.
    */
   public function testIPNPaymentRecurSuccess() {
     $this->setupRecurringPaymentProcessorTransaction();
@@ -82,7 +97,7 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
   }
 
   /**
-   * Test IPN response updates contribution_recur & contribution for first & second contribution
+   * Test IPN response updates contribution_recur & contribution for first & second contribution.
    */
   public function testIPNPaymentMembershipRecurSuccess() {
     $this->setupMembershipRecurringPaymentProcessorTransaction();
@@ -119,7 +134,8 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
   }
 
   /**
-   * CRM-13743 test IPN edge case where the first transaction fails and the second succeeds
+   * CRM-13743 test IPN edge case where the first transaction fails and the second succeeds.
+   *
    * We are checking that the created contribution has the same date as IPN says it should
    * Note that only one contribution will be created (no evidence of the failed contribution is left)
    * It seems likely that may change in future & this test will start failing (I point this out in the hope it
@@ -149,7 +165,8 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
   }
 
   /**
-   * Check a payment express IPN call does not throw any errors
+   * Check a payment express IPN call does not throw any errors.
+   *
    * At this stage nothing it supposed to happen so it's a pretty blunt test
    * but at least it should be e-notice free
    * The browser interaction will update Paypal express payments
@@ -206,7 +223,7 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
       'notify_version' => '3.7',
       'custom' => '',
       'payer_status' => 'unverified',
-      'address_country' => 'United States',
+      'address_country' => 'UNITED STATES',
       'address_city' => 'Portland',
       'quantity' => '1',
       'verify_sign' => 'AUyUU3IMAvssa3j4KorlbLnfr.9.AW7GX-sL7Ts1brCHvn13npvO-pqf',
@@ -264,7 +281,7 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
       'payer_status' => 'unverified',
       'currency_code' => 'USD',
       'business' => 'mpa@mainepeoplesalliance.org',
-      'address_country' => 'United States',
+      'address_country' => 'UNITED STATES',
       'address_city' => 'Limestone',
       'verify_sign' => 'AXi4DULbes8quzIiq2YNsdTJH5ciPPPzG9PcQvkQg4BjfvWi8aY9GgDb',
       'payer_email' => 'passport45051@yahoo.com',
@@ -291,6 +308,7 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
   }
 
   /**
+   * Get IPN style details for an incoming recurring transaction.
    */
   public function getPaypalProRecurTransaction() {
     return array(
@@ -340,6 +358,8 @@ class CRM_Core_Payment_PayPalProIPNTest extends CiviUnitTestCase {
   }
 
   /**
+   * Get IPN-style details for a second incoming transaction.
+   *
    * @return array
    */
   public function getPaypalProRecurSubsequentTransaction() {

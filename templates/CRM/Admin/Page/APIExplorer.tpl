@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -53,17 +53,33 @@
   #api-params-table th:first-child,
   #api-params-table td:first-child {
     width: 35%;
+    min-width: 190px;
+  }
+  #api-params-table td[colspan] {
+    width: 100%;
   }
   #api-params-table td:first-child + td,
-  #api-params-table th:first-child + th,
+  #api-params-table th:first-child + th {
+    width: 140px;
+  }
+  #api-params-table td:first-child + td select {
+    width: 132px;
+  }
+  #api-params-table td:first-child + td + td,
+  #api-params-table th:first-child + th + th {
+    width: 65%
+  }
   #api-generated td:first-child {
-    width: 9em;
+    width: 60px;
   }
   #api-params {
     min-height: 1em;
   }
   #api-params .red-icon {
     margin-top: .5em;
+  }
+  .api-param-remove {
+    float: right;
   }
   #mainTabContainer label {
     display: inline;
@@ -146,7 +162,7 @@
       <label for="api-entity">{ts}Entity{/ts}:</label>
       <select class="crm-form-select big required" id="api-entity" name="entity">
         <option value="" selected="selected">{ts}Choose{/ts}...</option>
-        {crmAPI entity="Entity" action="get" var="entities" version=3}
+        {crmAPI entity="Entity" var="entities"}
         {foreach from=$entities.values item=entity}
           <option value="{$entity}" {if !empty($entities.deprecated) && in_array($entity, $entities.deprecated)}class="strikethrough"{/if}>
             {$entity}
@@ -178,9 +194,9 @@
         <tbody id="api-params"></tbody>
       </table>
       <div id="api-param-buttons" style="display: none;">
-        <a href="#" class="crm-hover-button" id="api-params-add"><span class="icon ui-icon-plus"></span>{ts}Add Parameter{/ts}</a>
-        <a href="#" class="crm-hover-button" id="api-option-add"><span class="icon ui-icon-gear"></span>{ts}Add Option{/ts}</a>
-        <a href="#" class="crm-hover-button" id="api-chain-add"><span class="icon ui-icon-link"></span>{ts}Chain API Call{/ts}</a>
+        <a href="#" class="crm-hover-button" id="api-params-add"><i class="crm-i fa-plus"></i> {ts}Add Parameter{/ts}</a>
+        <a href="#" class="crm-hover-button" id="api-option-add"><i class="crm-i fa-cog"></i> {ts}Add Option{/ts}</a>
+        <a href="#" class="crm-hover-button" id="api-chain-add"><i class="crm-i fa-link"></i> {ts}Chain API Call{/ts}</a>
       </div>
       <div id="api-generated-wraper">
         <table id="api-generated" border=1>
@@ -198,8 +214,8 @@
         </table>
       </div>
       <div class="crm-submit-buttons">
-        <span class="crm-button crm-icon-button">
-          <span class="crm-button-icon ui-icon-check"> </span> <input type="submit" value="{ts}Execute{/ts}" class="crm-form-submit" accesskey="S" title="{ts}Execute API call and display results{/ts}"/>
+        <span class="crm-button button-crm-i">
+          <i class="crm-i fa-bolt"></i> <input type="submit" value="{ts}Execute{/ts}" class="crm-form-submit" accesskey="S" title="{ts}Execute API call and display results{/ts}"/>
         </span>
       </div>
 <pre id="api-result" class="linenums">
@@ -274,7 +290,7 @@
     </td>
     <td>
       <input style="width: 85%;" class="crm-form-text api-param-value api-input" placeholder="{ts}Value{/ts}"/>
-      <a class="crm-hover-button api-param-remove" href="#"><span class="icon ui-icon-close"></span></a>
+      <a class="crm-hover-button api-param-remove" href="#"><i class="crm-i fa-times"></i></a>
     </td>
   </tr>
 </script>
@@ -302,7 +318,7 @@
     </td>
     <td>
       <input style="width: 85%;" class="crm-form-text api-option-value api-input" placeholder="{ts}Value{/ts}"/>
-      <a class="crm-hover-button api-param-remove" href="#"><span class="icon ui-icon-close"></span></a>
+      <a class="crm-hover-button api-param-remove" href="#"><i class="crm-i fa-times"></i></a>
     </td>
   </tr>
 </script>
@@ -326,7 +342,7 @@
     </td>
     <td>
       <input style="width: 85%;" class="crm-form-text api-param-value api-input" value="{ldelim}{rdelim}" placeholder="{ts}API Params{/ts}"/>
-      <a class="crm-hover-button api-param-remove" href="#"><span class="icon ui-icon-close"></span></a>
+      <a class="crm-hover-button api-param-remove" href="#"><i class="crm-i fa-times"></i></a>
     </td>
   </tr>
 </script>

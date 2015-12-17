@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -83,6 +83,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
     parent::setUp();
     $this->enableCiviCampaign();
     $this->toBeImplemented['get'] = array(
+      'CxnApp', // CxnApp.get exists but relies on remote data outside our control; QA w/UtilsTest::testBasicArrayGet
       'Profile',
       'CustomValue',
       'Constant',
@@ -91,33 +92,43 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
       'ReportTemplate',
       'System',
       'Setting',
+      'Payment',
     );
     $this->toBeImplemented['create'] = array(
+      'Cxn',
+      'CxnApp',
+      'JobLog',
       'SurveyRespondant',
       'OptionGroup',
       'MailingRecipients',
       'UFMatch',
-      'LocationType',
       'CustomSearch',
       'Extension',
       'ReportTemplate',
       'System',
+      'User',
+      'Payment',
+      'SavedSearch', //work fine in local
     );
     $this->toBeImplemented['delete'] = array(
+      'Cxn',
+      'CxnApp',
+      'JobLog',
       'MembershipPayment',
       'OptionGroup',
       'SurveyRespondant',
       'UFJoin',
       'UFMatch',
       'Extension',
-      'LocationType',
       'System',
+      'Payment',
     );
     $this->onlyIDNonZeroCount['get'] = array(
       'ActivityType',
       'Entity',
       'Domain',
       'Setting',
+      'User',
     );
     $this->deprecatedAPI = array('Location', 'ActivityType', 'SurveyRespondant');
     $this->deletableTestObjects = array();
@@ -231,7 +242,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
    */
   public static function custom_data_entities() {
     $entities = CRM_Core_BAO_CustomQuery::$extendsMap;
-    $enabledComponents = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'enable_components', NULL, array());
+    $enabledComponents = Civi::settings()->get('enable_components');
     $customDataEntities = array();
     $invalidEntities = array('Individual', 'Organization', 'Household');
     $entitiesToFix = array('Case', 'Relationship');
@@ -278,8 +289,12 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
    *
    * Mailing Contact Just doesn't support id. We have always insisted on finding a way to
    * support id in API but in this case the underlying tables are crying out for a restructure
-   * & it just doesn't make sense, on the otherhand Event need id to be existent as pseudo property
-   * is been associated with it, so we need to bypass for get api otherwise it will through pseudo_match validation
+   * & it just doesn't make sense.
+   *
+   * User doesn't support get By ID because the user id is actually the CMS user ID & is not part of
+   *   CiviCRM - so can only be tested through UserTest - not SyntaxConformanceTest.
+   *
+   * Entity doesn't support get By ID because it simply gives the result of string Entites in CiviCRM
    *
    * @param bool $sequential
    *
@@ -287,7 +302,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
    *   Entities that cannot be retrieved by ID
    */
   public static function toBeSkipped_getByID($sequential = FALSE) {
-    return array('MailingContact', 'Event');
+    return array('MailingContact', 'User', 'Attachment', 'Entity');
   }
 
   /**
@@ -327,6 +342,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
       'Profile',
       'CustomValue',
       'Setting',
+      'User',
     );
     if ($sequential === TRUE) {
       return $entitiesWithout;
@@ -421,7 +437,6 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
       'Group',
       'GroupOrganization',
       'GroupNesting',
-      'Job',
       'File',
       'EntityTag',
       'CustomField',
@@ -435,7 +450,6 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
       'MailingEventResubscribe',
       'UFGroup',
       'Activity',
-      'Email',
       'Event',
       'GroupContact',
       'MembershipPayment',
@@ -553,6 +567,27 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
           'pcp_id',
         ),
       ),
+      'Email' => array(
+        'cant_update' => array(
+          // This is being legitimately manipulated to always have a valid primary - skip.
+          'is_primary',
+        ),
+      ),
+      'Navigation' => array(
+        'cant_update' => array(
+          // Weight is deliberately altered when this is changed - skip.
+          'parent_id',
+        ),
+      ),
+      'LocationType' => array(
+        'cant_update' => array(
+          // I'm on the fence about whether the test should skip or the behaviour is wrong.
+          // display_name is set to match name if display_name is not provided. It would be more 'normal'
+          // to only calculate a default IF id is not set - but perhaps the current behaviour is kind
+          // of what someone updating the name expects..
+          'name',
+        ),
+      ),
       'Pledge' => array(
         'cant_update' => array(
           'pledge_original_installment_amount',
@@ -599,6 +634,24 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
           'weight', //won't update as there is no 1 in the same price set
         ),
       ),
+      'ReportInstance' => array(
+        // View mode is part of the navigation which is not retrieved by the api.
+        'cant_return' => array('view_mode'),
+      ),
+      'SavedSearch' => array(
+        // I think the fields below are generated based on form_values.
+        'cant_update' => array(
+          'search_custom_id',
+          'where_clause',
+          'select_tables',
+          'where_tables',
+        ),
+      ),
+      'StatusPreference' => array(
+        'break_return' => array(
+          'ignore_severity',
+        ),
+      ),
     );
     if (empty($knownFailures[$entity]) || empty($knownFailures[$entity][$key])) {
       return array();
@@ -615,7 +668,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
    */
   public function testNotImplemented_get($Entity) {
     $result = civicrm_api($Entity, 'Get', array('version' => 3));
-    $this->assertEquals(1, $result['is_error'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['is_error']);
     // $this->assertContains("API ($Entity, Get) does not exist", $result['error_message']);
     $this->assertRegExp('/API (.*) does not exist/', $result['error_message']);
   }
@@ -657,7 +710,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
       return;
     }
     $result = civicrm_api($Entity, 'Get', array());
-    $this->assertEquals(1, $result['is_error'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['is_error']);
     $this->assertContains("Mandatory key(s) missing from params array", $result['error_message']);
   }
 
@@ -719,6 +772,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
     $this->customFieldDelete($ids['custom_field_id']);
     $this->customGroupDelete($ids['custom_group_id']);
     $this->callAPISuccess($entityName, 'delete', array('id' => $result['id']));
+    $this->quickCleanup(array('civicrm_uf_match'));
   }
 
   /**
@@ -864,11 +918,17 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
    * @param string $entityName
    */
   public function testSqlOperators($entityName) {
-    $baoString = _civicrm_api3_get_BAO($entityName);
-    if (empty($baoString)) {
-      $this->markTestIncomplete("Entity [$entityName] cannot be mocked - no known DAO");
+    $toBeIgnored = array_merge($this->toBeImplemented['get'],
+      $this->deprecatedAPI,
+      $this->toBeSkipped_get(TRUE),
+      $this->toBeSkipped_getByID()
+    );
+    if (in_array($entityName, $toBeIgnored)) {
       return;
     }
+
+    $baoString = _civicrm_api3_get_BAO($entityName);
+
     $entities = $this->callAPISuccess($entityName, 'get', array('options' => array('limit' => 0), 'return' => 'id'));
     $entities = array_keys($entities['values']);
     $totalEntities = count($entities);
@@ -998,7 +1058,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
    */
   public function testNotImplemented_create($Entity) {
     $result = civicrm_api($Entity, 'Create', array('version' => 3));
-    $this->assertEquals(1, $result['is_error'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['is_error']);
     $this->assertContains(strtolower("API ($Entity, Create) does not exist"), strtolower($result['error_message']));
   }
 
@@ -1053,7 +1113,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
    */
   public function testCreateWrongTypeParamTag_create() {
     $result = civicrm_api("Tag", 'Create', 'this is not a string');
-    $this->assertEquals(1, $result['is_error'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['is_error']);
     $this->assertEquals("Input variable `params` is not an array", $result['error_message']);
   }
 
@@ -1125,11 +1185,6 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
           break;
 
         case CRM_Utils_Type::T_TIMESTAMP:
-          // 4.6 doesn't support timestamp updates from 4.7 we should uncomment this. See CRM-16431.
-          continue;
-
-        //case CRM_Utils_Type::T_DATETIME:
-
         case 12:
           $entity[$fieldName] = '2012-05-20 03:05:20';
           break;
@@ -1140,7 +1195,30 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
         case CRM_Utils_Type::T_TEXT:
         case CRM_Utils_Type::T_LONGTEXT:
         case CRM_Utils_Type::T_EMAIL:
-          $entity[$fieldName] = substr('New String', 0, CRM_Utils_Array::Value('maxlength', $specs, 100));
+          if ($fieldName == 'form_values' && $entityName == 'SavedSearch') {
+            // This is a hack for the SavedSearch API.
+            // It expects form_values to be an array.
+            // If you want to fix this, you should definitely read this forum
+            // post.
+            // http://forum.civicrm.org/index.php/topic,33990.0.html
+            // See also my question on the CiviCRM Stack Exchange:
+            // https://civicrm.stackexchange.com/questions/3437
+            $entity[$fieldName] = array('sort_name' => "SortName2");
+          }
+          else {
+            $entity[$fieldName] = substr('New String', 0, CRM_Utils_Array::Value('maxlength', $specs, 100));
+            if ($fieldName == 'email') {
+              $entity[$fieldName] = strtolower($entity[$fieldName]);
+            }
+            // typecast with array to satisfy changes made in CRM-13160
+            if ($entityName == 'MembershipType' && in_array($fieldName, array(
+                'relationship_type_id',
+                'relationship_direction',
+              ))
+            ) {
+              $entity[$fieldName] = (array) $entity[$fieldName];
+            }
+          }
           break;
 
         case CRM_Utils_Type::T_INT:
@@ -1153,9 +1231,9 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
               $entity[$fieldName] = (string) $entity2['id'];
             }
             else {
-              $uniqueName = CRM_Utils_Array::value('uniqueName', $specs);
+              $uniqueName = CRM_Utils_Array::value('uniqueName', $specs, $fieldName);
               if (!empty($entity[$fieldName])) {
-                $resetFKTo = array($fieldName => $entity[$fieldName]);
+                $resetFKTo = array($fieldName => $entity[$fieldName], $uniqueName => $entity[$fieldName]);
               }
               $entity[$fieldName] = (string) empty($entity2[$field]) ? CRM_Utils_Array::value($uniqueName, $entity2) : $entity2[$field];
               //todo - there isn't always something set here - & our checking on unset values is limited
@@ -1193,7 +1271,8 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
                 'sequential' => 1,
               ));
             $optionValue = $optionValue['values'];
-            $options[$optionValue[0]['value']] = 'new option value';
+            $keyColumn = CRM_Utils_Array::value('keyColumn', $specs['pseudoconstant'], 'value');
+            $options[$optionValue[0][$keyColumn]] = 'new option value';
           }
         }
         $entity[$field] = array_rand($options);
@@ -1213,6 +1292,10 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
         $entity['contribution_type_id'] = $updateParams['financial_type_id'];
       }
 
+      if (!empty($specs['uniqueName'])) {
+        $entity[$specs['uniqueName']] = $entity[$specs['name']];
+      }
+
       $update = $this->callAPISuccess($entityName, 'create', $updateParams);
       $checkParams = array(
         'id' => $entity['id'],
@@ -1225,6 +1308,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
       );
 
       $checkEntity = $this->callAPISuccess($entityName, 'getsingle', $checkParams);
+
       $this->assertAPIArrayComparison($entity, $checkEntity, array(), "checking if $fieldName was correctly updated\n" . print_r(array(
             'update-params' => $updateParams,
             'update-result' => $update,
@@ -1258,7 +1342,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
   public function testNotImplemented_delete($Entity) {
     $nonExistantID = 151416349;
     $result = civicrm_api($Entity, 'Delete', array('version' => 3, 'id' => $nonExistantID));
-    $this->assertEquals(1, $result['is_error'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['is_error']);
     $this->assertContains(strtolower("API ($Entity, Delete) does not exist"), strtolower($result['error_message']));
   }
 
@@ -1282,7 +1366,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
       return;
     }
     $result = civicrm_api($Entity, 'Delete', array());
-    $this->assertEquals(1, $result['is_error'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['is_error']);
     $this->assertContains("Mandatory key(s) missing from params array", $result['error_message']);
   }
 
@@ -1307,7 +1391,7 @@ class api_v3_SyntaxConformanceTest extends CiviUnitTestCase {
    */
   public function testDeleteWrongTypeParamTag_delete() {
     $result = civicrm_api("Tag", 'Delete', 'this is not a string');
-    $this->assertEquals(1, $result['is_error'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['is_error']);
     $this->assertEquals("Input variable `params` is not an array", $result['error_message']);
   }
 

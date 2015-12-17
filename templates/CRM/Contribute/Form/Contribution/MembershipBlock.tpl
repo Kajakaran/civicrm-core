@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -256,7 +256,7 @@ function showHideAutoRenew( memTypeId )
      //to load auto_renew checked.
      //isChecked = true;
 
-  } else if ( currentOption == 2 ) {
+  } else if ( currentOption == 2 || currentOption == 4) {
      funName = 'show();';
      isChecked = readOnly = true;
   }

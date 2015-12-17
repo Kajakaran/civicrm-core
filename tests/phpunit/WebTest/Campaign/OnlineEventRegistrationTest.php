@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -130,7 +130,7 @@ class WebTest_Campaign_OnlineEventRegistrationTest extends CiviSeleniumTestCase 
     $streetAddress = "100 Main Street";
     $this->_testAddLocation($streetAddress);
 
-    $this->_testAddFees(FALSE, FALSE, $paymentProcessorId);
+    $this->_testAddFees(FALSE, FALSE, $processorName);
 
     // intro text for registration page
     $registerIntro = "Fill in all the fields below and click Continue.";
@@ -197,7 +197,7 @@ class WebTest_Campaign_OnlineEventRegistrationTest extends CiviSeleniumTestCase 
     $this->waitForElementPresent('address_1_city');
     $this->type("address_1_city", "San Francisco");
     $this->type("address_1_postal_code", "94117");
-    $this->select('address_1_country_id', 'United States');
+    $this->select('address_1_country_id', 'UNITED STATES');
     $this->select("address_1_state_province_id", "value=1004");
     $this->type("email_1_email", "info@civicrm.org");
 
@@ -210,14 +210,14 @@ class WebTest_Campaign_OnlineEventRegistrationTest extends CiviSeleniumTestCase 
   /**
    * @param bool $discount
    * @param bool $priceSet
-   * @param int $processorId
+   * @param int $processorIds
    */
-  public function _testAddFees($discount = FALSE, $priceSet = FALSE, $processorId) {
+  public function _testAddFees($discount = FALSE, $priceSet = FALSE, $processorIds) {
     // Go to Fees tab
     $this->click("link=Fees");
     $this->waitForElementPresent("_qf_Fee_upload-bottom");
     $this->click("CIVICRM_QFID_1_is_monetary");
-    $this->check("payment_processor[$processorId]");
+    $this->select2('payment_processor', $processorIds, TRUE);
     $this->select("financial_type_id", "value=4");
     if ($priceSet) {
       // get one - TBD
@@ -257,8 +257,8 @@ class WebTest_Campaign_OnlineEventRegistrationTest extends CiviSeleniumTestCase 
       $this->assertChecked("is_multiple_registrations");
     }
 
-    $this->click('intro_text-plain');
-    $this->fillRichTextField("intro_text", $registerIntro);
+    $this->click("xpath=//div[@id='registration_screen']/table/tbody/tr[1]/td[2]/div[@class='replace-plain']");
+    $this->fillRichTextField('intro_text', $registerIntro, 'CKEditor', TRUE);
 
     // enable confirmation email
     $this->click("CIVICRM_QFID_1_is_email_confirm");
@@ -360,7 +360,7 @@ class WebTest_Campaign_OnlineEventRegistrationTest extends CiviSeleniumTestCase 
     $this->waitForElementPresent("xpath=//div[@id='participantSearch']");
     $this->click("xpath=//div[@id='participantSearch']/table/tbody/tr/td[11]/span[1]/a[2][text()='Edit']");
     $this->waitForElementPresent("_qf_Participant_cancel-bottom");
-    $this->assertElementContainsText("xpath=//form[@id='Participant']//div/div/table/tbody//tr/td[2]/select", "$campaignTitle");
+    $this->assertElementContainsText("xpath=//div[@id='s2id_campaign_id']", "$campaignTitle");
   }
 
 }

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,11 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
  */
 
 /**
- * This class generates form components for search-result tasks
+ * This class generates form components for search-result tasks.
  */
 class CRM_Contact_Form_Task extends CRM_Core_Form {
 
@@ -374,6 +373,7 @@ class CRM_Contact_Form_Task extends CRM_Core_Form {
         array(
           'type' => $backType,
           'name' => ts('Cancel'),
+          'icon' => 'fa-times',
         ),
       )
     );

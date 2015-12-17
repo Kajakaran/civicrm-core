@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * form to process actions on Price Sets
+ * Form to process actions on Price Sets.
  */
 class CRM_Price_Form_Set extends CRM_Core_Form {
 
@@ -47,8 +45,6 @@ class CRM_Price_Form_Set extends CRM_Core_Form {
 
   /**
    * Set variables up before form is built.
-   *
-   * @return void
    */
   public function preProcess() {
     // current set id
@@ -111,8 +107,6 @@ class CRM_Price_Form_Set extends CRM_Core_Form {
 
   /**
    * Build the form object.
-   *
-   * @return void
    */
   public function buildQuickForm() {
     $this->applyFilter('__ALL__', 'trim');
@@ -191,6 +185,14 @@ class CRM_Price_Form_Set extends CRM_Core_Form {
     // financial type
     $financialType = CRM_Financial_BAO_FinancialType::getIncomeFinancialType();
 
+    foreach ($financialType as $finTypeId => $type) {
+      if (CRM_Financial_BAO_FinancialType::isACLFinancialTypeStatus()
+        && !CRM_Core_Permission::check('add contributions of type ' . $type)
+      ) {
+        unset($financialType[$finTypeId]);
+      }
+    }
+
     $this->add('select', 'financial_type_id',
       ts('Default Financial Type'),
       array('' => ts('- select -')) + $financialType, 'required'
@@ -231,8 +233,9 @@ class CRM_Price_Form_Set extends CRM_Core_Form {
   }
 
   /**
-   * Set default values for the form. Note that in edit/view mode
-   * the default values are retrieved from the database
+   * Set default values for the form. Note that in edit/view mode.
+   *
+   * The default values are retrieved from the database.
    *
    * @return array
    *   array of default values
@@ -254,8 +257,6 @@ class CRM_Price_Form_Set extends CRM_Core_Form {
 
   /**
    * Process the form.
-   *
-   * @return void
    */
   public function postProcess() {
     // get the submitted form values.

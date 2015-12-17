@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -44,14 +44,14 @@ class WebTest_Contact_SearchBuilderTest extends CiviSeleniumTestCase {
     $this->openCiviPage('contact/search/builder', 'reset=1');
 
     $this->enterValues(1, 1, 'Contacts', 'Group(s)', NULL, '=', array($groupName));
-    $this->enterValues(1, 2, 'Contacts', 'Country', NULL, '=', array('United States'));
+    $this->enterValues(1, 2, 'Contacts', 'Country', NULL, '=', array('UNITED STATES'));
     $this->enterValues(1, 3, 'Individual', 'Gender', NULL, '=', array('Male'));
     $this->click('_qf_Builder_refresh');
     $this->waitForPageToLoad();
 
     // We should get no results. But check the options are all still set
     $this->waitForTextPresent('No matches found for:');
-    foreach (array($groupName, 'United States', 'Male') as $i => $label) {
+    foreach (array($groupName, 'UNITED STATES', 'Male') as $i => $label) {
       $this->waitForElementPresent("//span[@id='crm_search_value_1_$i']/select/option[2]");
       $this->assertSelectedLabel("//span[@id='crm_search_value_1_$i']/select", $label);
     }
@@ -103,7 +103,7 @@ class WebTest_Contact_SearchBuilderTest extends CiviSeleniumTestCase {
     $this->type("address_1_supplemental_address_2", "street supplement 2 $firstName");
     $this->type("address_1_city", "city$firstName");
     $this->type("address_1_postal_code", "100100");
-    $this->select("address_1_country_id", "United States");
+    $this->select("address_1_country_id", "UNITED STATES");
     $this->select("address_1_state_province_id", "Alaska");
 
     // save contact
@@ -203,13 +203,13 @@ class WebTest_Contact_SearchBuilderTest extends CiviSeleniumTestCase {
 
     $firstName8 = "abcc" . substr(sha1(rand()), 0, 7);
     $this->_createContact('Individual', $firstName8, "$firstName8@advsearch.co.in", NULL);
-    $this->_searchBuilder('Note(s): Body and Subject', "this is notes by $firstName8", $firstName8, 'LIKE');
-    $this->_searchBuilder('Note(s): Subject Only', "this is subject by $firstName8", $firstName8, 'LIKE');
-    $this->_searchBuilder('Note(s): Body Only', "this is notes by $firstName8", $firstName8, 'LIKE');
-    $this->_advancedSearch("this is notes by $firstName8", $firstName8, NULL, NULL, 'note_body', 'notes');
-    $this->_advancedSearch("this is subject by $firstName8", $firstName8, NULL, NULL, 'note_subject', 'notes');
-    $this->_advancedSearch("this is notes by $firstName8", $firstName8, NULL, NULL, 'note_both', 'notes');
-    $this->_advancedSearch("this is notes by $firstName8", $firstName8, NULL, NULL, 'note_both', 'notes');
+    $this->_searchBuilder('Note(s): Body and Subject', "this is notes by $firstName8 adv$firstName8", $firstName8, 'LIKE');
+    $this->_searchBuilder('Note(s): Subject Only', "this is subject by $firstName8 adv$firstName8", $firstName8, 'LIKE');
+    $this->_searchBuilder('Note(s): Body Only', "this is notes by $firstName8 adv$firstName8", $firstName8, 'LIKE');
+    $this->_advancedSearch("this is notes by $firstName8 adv$firstName8", $firstName8, NULL, NULL, 'note_body', 'notes');
+    $this->_advancedSearch("this is subject by $firstName8 adv$firstName8", $firstName8, NULL, NULL, 'note_subject', 'notes');
+    $this->_advancedSearch("this is notes by $firstName8 adv$firstName8", $firstName8, NULL, NULL, 'note_both', 'notes');
+    $this->_advancedSearch("this is notes by $firstName8 adv$firstName8", $firstName8, NULL, NULL, 'note_both', 'notes');
   }
 
   /**
@@ -363,7 +363,7 @@ class WebTest_Contact_SearchBuilderTest extends CiviSeleniumTestCase {
     $this->type("email_1_email", $email);
     $this->type("phone_1_phone", "9876543210");
     $this->type("address_1_street_address", $streetName);
-    $this->select("address_1_country_id", "United States");
+    $this->select("address_1_country_id", "UNITED STATES");
     $this->select("address_1_state_province_id", "Alaska");
     $this->type("address_1_postal_code", $postalCode);
 
@@ -510,12 +510,14 @@ class WebTest_Contact_SearchBuilderTest extends CiviSeleniumTestCase {
     $this->waitForText('search-status', "1 Contact");
 
     $this->click("xpath=//div[@class='crm-accordion-header crm-master-accordion-header']");
+    $this->waitForElementPresent("xpath=//div[@id='map-field']/div[1]/table/tbody/tr[2]/td/a");
     $this->click("xpath=//div[@id='map-field']/div[1]/table/tbody/tr[2]/td/a");
     $this->enterValues(1, 2, 'Membership', 'Membership Status', NULL, 'IN', array('New', 'Grace'));
     $this->clickLink('_qf_Builder_refresh');
     $this->waitForText('search-status', "2 Contacts");
 
     $this->click("xpath=//div[@class='crm-accordion-header crm-master-accordion-header']");
+    $this->waitForElementPresent("xpath=//div[@id='map-field']/div[1]/table/tbody/tr[2]/td/a");
     $this->click("xpath=//div[@id='map-field']/div[1]/table/tbody/tr[2]/td/a");
     $this->enterValues(1, 2, 'Membership', 'Membership Status', NULL, 'IN', array('Current', 'Expired'));
     $this->clickLink('_qf_Builder_refresh');
@@ -523,19 +525,21 @@ class WebTest_Contact_SearchBuilderTest extends CiviSeleniumTestCase {
 
     // Find Membership
     $this->openCiviPage("member/search", "reset=1", "_qf_Search_refresh");
-    $this->click("xpath=//label[text()='{$membershipTypes['membership_type']}']");
+    $this->select2('membership_type_id', $membershipTypes['membership_type'], TRUE);
     $this->clickLink('_qf_Search_refresh');
     $this->waitForText('search-status', "2 Results");
 
     $this->click("xpath=//div[@class='crm-accordion-header crm-master-accordion-header']");
-    $this->click("xpath=//label[text()='New']");
-    $this->click("xpath=//label[text()='Grace']");
+    $this->multiselect2("membership_status_id", array("New", "Grace"));
     $this->clickLink('_qf_Search_refresh');
     $this->waitForText('search-status', "2 Results");
 
+    $this->openCiviPage("member/search", "reset=1", "_qf_Search_refresh");
+    $this->waitForAjaxContent();
     $this->click("xpath=//div[@class='crm-accordion-header crm-master-accordion-header']");
-    $this->click("xpath=//label[text()='New']");
-    $this->clickLink('_qf_Search_refresh');
+    $this->select2('membership_type_id', $membershipTypes['membership_type'], TRUE);
+    $this->multiselect2("membership_status_id", array("New"));
+    $this->click('_qf_Search_refresh');
     $this->waitForText('search-status', "1 Result");
   }
 

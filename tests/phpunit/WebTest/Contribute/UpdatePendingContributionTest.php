@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -44,21 +44,21 @@ class WebTest_Contribute_UpdatePendingContributionTest extends CiviSeleniumTestC
     //Online Pay Later Contribution
     $this->_testOnlineContribution($contact);
     $this->openCiviPage("contribute/search", "reset=1", "contribution_date_low");
-
+    $this->click("xpath=//tr/td[1]/label[contains(text(), 'Contribution is a Test?')]/../../td[2]/label[contains(text(), 'Yes')]/../a[1]");
     $this->type("sort_name", $contact['sort_name']);
     $this->click("_qf_Search_refresh");
-
     $this->waitForPageToLoad($this->getTimeoutMsec());
+
     $this->click('radio_ts', 'ts_all');
     $contriIDOff = explode('&', $this->getAttribute("xpath=//div[@id='contributionSearch']/table/tbody/tr[1]/td[11]/span/a@href"));
-    $contriIDOn = explode('&', $this->getAttribute("xpath=//div[@id='contributionSearch']/table/tbody/tr[2]/td[11]/span/a@href"));
+    $contriIDOn = explode('&', $this->getAttribute("xpath=//div[@id='contributionSearch']/table/tbody/tr[1]/td[11]/span/a@href"));
     if (!empty($contriIDOff)) {
       $contriIDOff = substr($contriIDOff[1], (strrpos($contriIDOff[1], '=') + 1));
     }
     if (!empty($contriIDOn)) {
       $contriIDOn = substr($contriIDOn[1], (strrpos($contriIDOn[1], '=') + 1));
     }
-    $this->select('task', "label=Update Pending Contribution Status");
+    $this->select('task', "label=Update pending contribution status");
     $this->click("_qf_Search_next_action");
     $this->waitForPageToLoad($this->getTimeoutMsec());
     $this->select('contribution_status_id', 'label=Completed');
@@ -153,7 +153,7 @@ class WebTest_Contribute_UpdatePendingContributionTest extends CiviSeleniumTestC
       'Financial Type' => 'Donation',
       'Total Amount' => '100.00',
       'Contribution Status' => 'Pending',
-      'Paid By' => 'Check',
+      'Payment Method' => 'Check',
       'Check Number' => 'check #1041',
     );
     $this->webtestVerifyTabularData($expected);
@@ -228,7 +228,7 @@ class WebTest_Contribute_UpdatePendingContributionTest extends CiviSeleniumTestC
 
     //logout
     $this->webtestLogout();
-    $this->openCiviPage("contribute/transact", "reset=1&id=$pageId", "_qf_Main_upload-bottom");
+    $this->openCiviPage("contribute/transact", "reset=1&id=$pageId&action=preview", "_qf_Main_upload-bottom");
 
     $this->type("email-5", $contact['email']);
 
@@ -255,10 +255,10 @@ class WebTest_Contribute_UpdatePendingContributionTest extends CiviSeleniumTestC
 
     //Find Contribution
     $this->openCiviPage("contribute/search", "reset=1", "contribution_date_low");
-
+    $this->click("xpath=//tr/td[1]/label[contains(text(), 'Contribution is a Test?')]/../../td[2]/label[contains(text(), 'Yes')]/preceding-sibling::input[1]");
     $this->type("sort_name", $contact['sort_name']);
-    $this->clickLink("_qf_Search_refresh", "xpath=//div[@id='contributionSearch']//table//tbody/tr[2]/td[11]/span/a[text()='View']");
-    $this->clickLink("xpath=//div[@id='contributionSearch']//table//tbody/tr[2]/td[11]/span/a[text()='View']", "_qf_ContributionView_cancel-bottom", FALSE);
+    $this->clickLink("_qf_Search_refresh", "xpath=//div[@id='contributionSearch']//table/tbody/tr[1]/td[11]/span/a[text()='View']", FALSE);
+    $this->click("xpath=//div[@id='contributionSearch']//table/tbody/tr[1]/td[11]/span/a[text()='View']");
     // View Contribution Record and test for expected values
     $expected = array(
       'From' => $contact['display_name'],

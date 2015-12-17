@@ -57,6 +57,9 @@ else {
 
 // set installation type - drupal
 if (!session_id()) {
+  if (defined('PANTHEON_ENVIRONMENT')) {
+    ini_set('session.save_handler', 'files');
+  }
   session_start();
 }
 
@@ -103,22 +106,32 @@ require_once $crmPath . '/CRM/Core/ClassLoader.php';
 CRM_Core_ClassLoader::singleton()->register();
 
 // Load civicrm database config
-if (isset($_REQUEST['mysql'])) {
-  $databaseConfig = $_REQUEST['mysql'];
+if (isset($_POST['mysql'])) {
+  $databaseConfig = $_POST['mysql'];
 }
 else {
   $databaseConfig = array(
-    "server" => "localhost",
+    "server"   => "localhost",
     "username" => "civicrm",
     "password" => "",
     "database" => "civicrm",
   );
 }
 
+if ($installType == 'wordpress') {
+  //WP Database Data
+  $databaseConfig = array(
+    "server"   => DB_HOST,
+    "username" => DB_USER,
+    "password" => DB_PASSWORD,
+    "database" => DB_NAME,
+  );
+}
+
 if ($installType == 'drupal') {
   // Load drupal database config
-  if (isset($_REQUEST['drupal'])) {
-    $drupalConfig = $_REQUEST['drupal'];
+  if (isset($_POST['drupal'])) {
+    $drupalConfig = $_POST['drupal'];
   }
   else {
     $drupalConfig = array(
@@ -131,7 +144,7 @@ if ($installType == 'drupal') {
 }
 
 $loadGenerated = 0;
-if (isset($_REQUEST['loadGenerated'])) {
+if (isset($_POST['loadGenerated'])) {
   $loadGenerated = 1;
 }
 
@@ -161,16 +174,15 @@ global $tsLocale;
 $tsLocale = 'en_US';
 $seedLanguage = 'en_US';
 
-if (isset($_REQUEST['seedLanguage']) and isset($langs[$_REQUEST['seedLanguage']])) {
-  $seedLanguage = $_REQUEST['seedLanguage'];
-  $tsLocale = $_REQUEST['seedLanguage'];
+if (isset($_POST['seedLanguage']) and isset($langs[$_POST['seedLanguage']])) {
+  $seedLanguage = $_POST['seedLanguage'];
+  $tsLocale = $_POST['seedLanguage'];
 }
 
 $config = CRM_Core_Config::singleton(FALSE);
 $GLOBALS['civicrm_default_error_scope'] = NULL;
 
 // The translation files are in the parent directory (l10n)
-$config->gettextResourceDir = '..' . DIRECTORY_SEPARATOR . $config->gettextResourceDir;
 $i18n = CRM_Core_I18n::singleton();
 
 global $cmsPath;
@@ -188,9 +200,16 @@ if ($installType == 'drupal') {
 }
 elseif ($installType == 'wordpress') {
   $cmsPath = WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . 'civicrm';
-  $alreadyInstalled = file_exists($cmsPath . CIVICRM_DIRECTORY_SEPARATOR .
-    'civicrm.settings.php'
-  );
+  $upload_dir = wp_upload_dir();
+  $files_dirname = $upload_dir['basedir'] . DIRECTORY_SEPARATOR . 'civicrm';
+  $wp_civi_settings = $upload_dir['basedir'] . DIRECTORY_SEPARATOR . 'civicrm' . DIRECTORY_SEPARATOR . 'civicrm.settingsphp';
+  $wp_civi_settings_deprectated = CIVICRM_PLUGIN_DIR . 'civicrm.settings.php';
+  if (file_exists($wp_civi_settings_deprectated)) {
+    $alreadyInstalled = $wp_civi_settings_deprectated;
+  }
+  elseif (file_exists($wp_civi_settings)) {
+    $alreadyInstalled = $wp_civi_settings;
+  }
 }
 
 if ($installType == 'drupal') {
@@ -288,14 +307,14 @@ if ($databaseConfig) {
 }
 
 // Actual processor
-if (isset($_REQUEST['go']) && !$req->hasErrors() && !$dbReq->hasErrors()) {
+if (isset($_POST['go']) && !$req->hasErrors() && !$dbReq->hasErrors()) {
   // Confirm before reinstalling
-  if (!isset($_REQUEST['force_reinstall']) && $alreadyInstalled) {
+  if (!isset($_POST['force_reinstall']) && $alreadyInstalled) {
     include $installDirPath . 'template.html';
   }
   else {
     $inst = new Installer();
-    $inst->install($_REQUEST);
+    $inst->install($_POST);
   }
 
   // Show the config form
@@ -446,7 +465,7 @@ class InstallRequirements {
 
     $this->errors = NULL;
 
-    $this->requirePHPVersion('5.3.3', array(
+    $this->requirePHPVersion('5.3.4', array(
       ts("PHP Configuration"),
       ts("PHP5 installed"),
       NULL,
@@ -502,8 +521,13 @@ class InstallRequirements {
       );
     }
     elseif ($installType == 'wordpress') {
-      // make sure that we can write to plugins/civicrm  and plugins/files/
-      $writableDirectories = array(WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . 'files', $cmsPath);
+      // make sure that we can write to uploads/civicrm/
+      $upload_dir = wp_upload_dir();
+      $files_dirname = $upload_dir['basedir'] . DIRECTORY_SEPARATOR . 'civicrm';
+      if (!file_exists($files_dirname)) {
+        wp_mkdir_p($files_dirname);
+      }
+      $writableDirectories = array($files_dirname);
     }
 
     foreach ($writableDirectories as $dir) {
@@ -1458,6 +1482,10 @@ class Installer extends InstallRequirements {
 
         $c = CRM_Core_Config::singleton(FALSE);
         $c->free();
+        $wpInstallRedirect = admin_url("?page=CiviCRM&q=civicrm&reset=1");
+        echo "<script>
+         window.location = '$wpInstallRedirect';
+        </script>";
       }
     }
 

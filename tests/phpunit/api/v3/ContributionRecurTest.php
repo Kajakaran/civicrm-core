@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -66,7 +66,7 @@ class api_v3_ContributionRecurTest extends CiviUnitTestCase {
   }
 
   public function testGetContributionRecur() {
-    $result = $this->callAPISuccess($this->_entity, 'create', $this->params);
+    $this->callAPISuccess($this->_entity, 'create', $this->params);
     $getParams = array(
       'amount' => '500',
     );
@@ -77,9 +77,8 @@ class api_v3_ContributionRecurTest extends CiviUnitTestCase {
   public function testCreateContributionRecurWithToken() {
     // create token
     $this->createLoggedInUser();
-    $paymentProcessor = $this->processorCreate();
     $token = $this->callAPISuccess('PaymentToken', 'create', array(
-      'payment_processor_id' => $paymentProcessor->id,
+      'payment_processor_id' => $this->processorCreate(),
       'token' => 'hhh',
       'contact_id' => $this->individualCreate(),
     ));
@@ -93,7 +92,7 @@ class api_v3_ContributionRecurTest extends CiviUnitTestCase {
   public function testDeleteContributionRecur() {
     $result = $this->callAPISuccess($this->_entity, 'create', $this->params);
     $deleteParams = array('id' => $result['id']);
-    $result = $this->callAPIAndDocument($this->_entity, 'delete', $deleteParams, __FUNCTION__, __FILE__);
+    $this->callAPIAndDocument($this->_entity, 'delete', $deleteParams, __FUNCTION__, __FILE__);
     $checkDeleted = $this->callAPISuccess($this->_entity, 'get', array());
     $this->assertEquals(0, $checkDeleted['count']);
   }

@@ -62,7 +62,26 @@ class CRM_Utils_SQL_Insert {
   }
 
   /**
+   * Get columns.
+   *
+   * @param array $columns
+   *
+   * @return $this
+   * @throws \CRM_Core_Exception
+   */
+  public function columns($columns) {
+    if ($this->columns !== NULL) {
+      throw new CRM_Core_Exception("Column order already specified.");
+    }
+    $this->columns = $columns;
+    return $this;
+  }
+
+  /**
+   * Get rows.
+   *
    * @param array $rows
+   *
    * @return CRM_Utils_SQL_Insert
    */
   public function rows($rows) {
@@ -73,23 +92,26 @@ class CRM_Utils_SQL_Insert {
   }
 
   /**
+   * Get row.
+   *
    * @param array $row
+   *
    * @return CRM_Utils_SQL_Insert
    * @throws CRM_Core_Exception
    */
   public function row($row) {
     $columns = array_keys($row);
-    sort($columns);
 
     if ($this->columns === NULL) {
+      sort($columns);
       $this->columns = $columns;
     }
-    elseif ($this->columns != $columns) {
+    elseif (array_diff($this->columns, $columns) !== array()) {
       throw new CRM_Core_Exception("Inconsistent column names");
     }
 
     $escapedRow = array();
-    foreach ($columns as $column) {
+    foreach ($this->columns as $column) {
       $escapedRow[$column] = $this->escapeString($row[$column]);
     }
     $this->rows[] = $escapedRow;
@@ -101,6 +123,7 @@ class CRM_Utils_SQL_Insert {
    * Use REPLACE INTO instead of INSERT INTO.
    *
    * @param bool $asReplace
+   *
    * @return CRM_Utils_SQL_Insert
    */
   public function usingReplace($asReplace = TRUE) {
@@ -109,7 +132,10 @@ class CRM_Utils_SQL_Insert {
   }
 
   /**
+   * Escape string.
+   *
    * @param string|NULL $value
+   *
    * @return string
    *   SQL expression, e.g. "it\'s great" (with-quotes) or NULL (without-quotes)
    */
@@ -118,6 +144,8 @@ class CRM_Utils_SQL_Insert {
   }
 
   /**
+   * Convert to SQL.
+   *
    * @return string
    *   SQL statement
    */

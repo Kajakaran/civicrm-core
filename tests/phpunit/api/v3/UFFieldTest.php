@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -43,7 +43,11 @@ class api_v3_UFFieldTest extends CiviUnitTestCase {
   protected $_params;
   protected $_entity = 'uf_field';
 
-
+  /**
+   * Set up for test.
+   *
+   * @throws \Exception
+   */
   protected function setUp() {
     parent::setUp();
     $this->quickCleanup(
@@ -79,6 +83,11 @@ class api_v3_UFFieldTest extends CiviUnitTestCase {
     );
   }
 
+  /**
+   * Tear down function.
+   *
+   * @throws \Exception
+   */
   public function tearDown() {
     $this->quickCleanup(
       array(
@@ -92,10 +101,10 @@ class api_v3_UFFieldTest extends CiviUnitTestCase {
   }
 
   /**
-   * Create / updating field
+   * Create / updating field.
    */
   public function testCreateUFField() {
-    $params = $this->_params; // copy
+    $params = $this->_params;
     $ufField = $this->callAPIAndDocument('uf_field', 'create', $params, __FUNCTION__, __FILE__);
     unset($params['uf_group_id']);
     $this->_ufFieldId = $ufField['id'];
@@ -104,31 +113,39 @@ class api_v3_UFFieldTest extends CiviUnitTestCase {
     }
   }
 
+  /**
+   * Failure test for field_name.
+   */
   public function testCreateUFFieldWithBadFieldName() {
-    $params = $this->_params; // copy
-    $params['field_name'] = 'custom_98789'; // invalid field
+    $params = $this->_params;
+    $params['field_name'] = 'custom_98789';
     $this->callAPIFailure('uf_field', 'create', $params);
   }
 
+  /**
+   * Failure test for bad parameters.
+   */
   public function testCreateUFFieldWithWrongParams() {
     $this->callAPIFailure('uf_field', 'create', array('field_name' => 'test field'));
     $this->callAPIFailure('uf_field', 'create', array('label' => 'name-less field'));
   }
 
   /**
-   * Create a field with 'weight=1' and then a second with 'weight=1'. The second field
-   * winds up with weight=1, and the first field gets bumped to 'weight=2'.
+   * Create a field with 'weight=1' and then a second with 'weight=1'.
+   *
+   * The second field winds up with weight=1, and the first field gets bumped to 'weight=2'.
    */
   public function testCreateUFFieldWithDefaultAutoWeight() {
-    $params1 = $this->_params; // copy
+    $params1 = $this->_params;
     $ufField1 = $this->callAPISuccess('uf_field', 'create', $params1);
     $this->assertEquals(1, $ufField1['values'][$ufField1['id']]['weight']);
     $this->assertDBQuery(1, 'SELECT weight FROM civicrm_uf_field WHERE id = %1', array(
       1 => array($ufField1['id'], 'Int'),
     ));
 
-    $params2 = $this->_params; // copy
-    $params2['location_type_id'] = 2; // needs to be a different field
+    $params2 = $this->_params;
+    // needs to be a different field
+    $params2['location_type_id'] = 2;
     $ufField2 = $this->callAPISuccess('uf_field', 'create', $params2);
     $this->assertEquals(1, $ufField2['values'][$ufField2['id']]['weight']);
     $this->assertDBQuery(1, 'SELECT weight FROM civicrm_uf_field WHERE id = %1', array(
@@ -147,9 +164,12 @@ class api_v3_UFFieldTest extends CiviUnitTestCase {
     $params = array(
       'field_id' => $ufField['id'],
     );
-    $result = $this->callAPIAndDocument('uf_field', 'delete', $params, __FUNCTION__, __FILE__);
+    $this->callAPIAndDocument('uf_field', 'delete', $params, __FUNCTION__, __FILE__);
   }
 
+  /**
+   * Test getting ufField.
+   */
   public function testGetUFFieldSuccess() {
     $this->callAPISuccess($this->_entity, 'create', $this->_params);
     $result = $this->callAPIAndDocument($this->_entity, 'get', array(), __FUNCTION__, __FILE__);
@@ -157,7 +177,7 @@ class api_v3_UFFieldTest extends CiviUnitTestCase {
   }
 
   /**
-   * Create / updating field
+   * Create / updating field.
    */
   public function testReplaceUFFields() {
     $baseFields = array();
@@ -196,6 +216,7 @@ class api_v3_UFFieldTest extends CiviUnitTestCase {
       'uf_group_id' => $this->_ufGroupId,
       'option.autoweight' => FALSE,
       'values' => $baseFields,
+      'check_permissions' => TRUE,
     );
 
     $result = $this->callAPIAndDocument('uf_field', 'replace', $params, __FUNCTION__, __FILE__);
@@ -215,6 +236,45 @@ class api_v3_UFFieldTest extends CiviUnitTestCase {
         );
       }
     }
+  }
+
+  /**
+   * Check Profile API permission without ACL.
+   */
+  public function testProfilesWithoutACL() {
+    $this->createLoggedInUser();
+    $baseFields[] = array(
+      'field_name' => 'first_name',
+      'field_type' => 'Contact',
+      'visibility' => 'Public Pages and Listings',
+      'weight' => 3,
+      'label' => 'Test First Name',
+      'is_searchable' => 1,
+      'is_active' => 1,
+    );
+    CRM_Core_Config::singleton()->userPermissionClass->permissions = array('access CiviCRM');
+    $params = array(
+      'uf_group_id' => $this->_ufGroupId,
+      'option.autoweight' => FALSE,
+      'values' => $baseFields,
+      'check_permissions' => TRUE,
+    );
+    $this->_loggedInUser = CRM_Core_Session::singleton()->get('userID');
+    $this->callAPIFailure('uf_field', 'replace', $params);
+  }
+
+  /**
+   * Check Profile ACL for API permission.
+   */
+  public function testACLPermissionforProfiles() {
+    $this->createLoggedInUser();
+    $this->_permissionedGroup = $this->groupCreate(array(
+      'title' => 'Edit Profiles',
+      'is_active' => 1,
+      'name' => 'edit-profiles',
+    ));
+    $this->setupACL(TRUE);
+    $this->testReplaceUFFields();
   }
 
 }

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -321,8 +321,10 @@ class CRM_Core_Action {
   /**
    * Get the mask for a permission (view, edit or null)
    *
+   * @param array $permissions
+   *
    * @return int
-   *   the mask for the above permission
+   *   The mask for the above permission
    */
   public static function mask($permissions) {
     $mask = NULL;

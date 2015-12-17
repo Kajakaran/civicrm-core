@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -131,7 +131,6 @@ class CRM_Utils_Array {
    *   (optional) Indentation depth counter.
    * @param string $seperator
    *   (optional) String to be appended after open/close tags.
-   *
    *
    * @return string
    *   XML fragment representing $list.
@@ -345,8 +344,11 @@ class CRM_Utils_Array {
   }
 
   /**
-   * @param $subset
-   * @param $superset
+   * Is array A a subset of array B.
+   *
+   * @param array $subset
+   * @param array $superset
+   *
    * @return bool
    *   TRUE if $subset is a subset of $superset
    */
@@ -388,12 +390,18 @@ class CRM_Utils_Array {
   }
 
   /**
-   * convert associative array names to values.
-   * and vice-versa.
+   * Convert associative array names to values and vice-versa.
    *
    * This function is used by both the web form layer and the api. Note that
    * the api needs the name => value conversion, also the view layer typically
    * requires value => name conversion
+   *
+   * @param array $defaults
+   * @param string $property
+   * @param $lookup
+   * @param $reverse
+   *
+   * @return bool
    */
   public static function lookupValue(&$defaults, $property, $lookup, $reverse) {
     $id = $property . '_id';
@@ -407,7 +415,7 @@ class CRM_Utils_Array {
 
     $look = $reverse ? array_flip($lookup) : $lookup;
 
-    //trim lookup array, ignore . ( fix for CRM-1514 ), eg for prefix/suffix make sure Dr. and Dr both are valid
+    // trim lookup array, ignore . ( fix for CRM-1514 ), eg for prefix/suffix make sure Dr. and Dr both are valid
     $newLook = array();
     foreach ($look as $k => $v) {
       $newLook[trim($k, ".")] = $v;
@@ -608,6 +616,35 @@ class CRM_Utils_Array {
         else {
           $result[$key] = $record[$prop];
         }
+      }
+    }
+    return $result;
+  }
+
+  /**
+   * Iterates over a list of objects and executes some method on each.
+   *
+   * Comparison:
+   *   - This is like array_map(), except it executes the objects' method
+   *     instead of a free-form callable.
+   *   - This is like Array::collect(), except it uses a method
+   *     instead of a property.
+   *
+   * @param string $method
+   *   The method to execute.
+   * @param array|Traversable $objects
+   *   A list of objects.
+   * @param array $args
+   *   An optional list of arguments to pass to the method.
+   *
+   * @return array
+   *   Keys are the original keys of $objects; values are the method results.
+   */
+  public static function collectMethod($method, $objects, $args = array()) {
+    $result = array();
+    if (is_array($objects)) {
+      foreach ($objects as $key => $object) {
+        $result[$key] = call_user_func_array(array($object, $method), $args);
       }
     }
     return $result;
@@ -837,7 +874,7 @@ class CRM_Utils_Array {
 
   /**
    * Diff multidimensional arrays
-   * ( array_diff does not support multidimensional array)
+   * (array_diff does not support multidimensional array)
    *
    * @param array $array1
    * @param array $array2
@@ -864,6 +901,150 @@ class CRM_Utils_Array {
       }
     }
     return $arrayDiff;
+  }
+
+  /**
+   * Given a 2-dimensional matrix, create a new matrix with a restricted list of columns.
+   *
+   * @param array $matrix
+   *   All matrix data, as a list of rows.
+   * @param array $columns
+   *   List of column names.
+   * @return array
+   */
+  public static function filterColumns($matrix, $columns) {
+    $newRows = array();
+    foreach ($matrix as $pos => $oldRow) {
+      $newRow = array();
+      foreach ($columns as $column) {
+        $newRow[$column] = CRM_Utils_Array::value($column, $oldRow);
+      }
+      $newRows[$pos] = $newRow;
+    }
+    return $newRows;
+  }
+
+  /**
+   * Rewrite the keys in an array by filtering through a function.
+   *
+   * @param array $array
+   * @param callable $func
+   *   Function($key, $value). Returns the new key.
+   * @return array
+   */
+  public static function rekey($array, $func) {
+    $result = array();
+    foreach ($array as $key => $value) {
+      $newKey = $func($key, $value);
+      $result[$newKey] = $value;
+    }
+    return $result;
+  }
+
+  /**
+   * Copy all properties of $other into $array (recursively).
+   *
+   * @param array|ArrayAccess $array
+   * @param array $other
+   */
+  public static function extend(&$array, $other) {
+    foreach ($other as $key => $value) {
+      if (is_array($value)) {
+        self::extend($array[$key], $value);
+      }
+      else {
+        $array[$key] = $value;
+      }
+    }
+  }
+
+  /**
+   * Get a single value from an array-tre.
+   *
+   * @param array $arr
+   *   Ex: array('foo'=>array('bar'=>123)).
+   * @param array $pathParts
+   *   Ex: array('foo',bar').
+   * @return mixed|NULL
+   *   Ex 123.
+   */
+  public static function pathGet($arr, $pathParts) {
+    $r = $arr;
+    foreach ($pathParts as $part) {
+      if (!isset($r[$part])) {
+        return NULL;
+      }
+      $r = $r[$part];
+    }
+    return $r;
+  }
+
+  /**
+   * Set a single value in an array tree.
+   *
+   * @param array $arr
+   *   Ex: array('foo'=>array('bar'=>123)).
+   * @param array $pathParts
+   *   Ex: array('foo',bar').
+   * @param $value
+   *   Ex: 456.
+   */
+  public static function pathSet(&$arr, $pathParts, $value) {
+    $r = &$arr;
+    $last = array_pop($pathParts);
+    foreach ($pathParts as $part) {
+      if (!isset($r[$part])) {
+        $r[$part] = array();
+      }
+      $r = &$r[$part];
+    }
+    $r[$last] = $value;
+  }
+
+  /**
+   * Convert a simple dictionary into separate key+value records.
+   *
+   * @param array $array
+   *   Ex: array('foo' => 'bar').
+   * @param string $keyField
+   *   Ex: 'key'.
+   * @param string $valueField
+   *   Ex: 'value'.
+   * @return array
+   *   Ex: array(
+   *     0 => array('key' => 'foo', 'value' => 'bar')
+   *   ).
+   */
+  public static function toKeyValueRows($array, $keyField = 'key', $valueField = 'value') {
+    $result = array();
+    foreach ($array as $key => $value) {
+      $result[] = array(
+        $keyField => $key,
+        $valueField => $value,
+      );
+    }
+    return $result;
+  }
+
+  /**
+   * Convert array where key(s) holds the actual value and value(s) as 1 into array of actual values
+   *  Ex: array('foobar' => 1, 4 => 1) formatted into array('foobar', 4)
+   *
+   * @param array $array
+   * @return void
+   */
+  public static function formatArrayKeys(&$array) {
+    $keys = array_keys($array, 1);
+    if (count($keys) > 1 ||
+      (count($keys) == 1 &&
+        (current($keys) > 1 ||
+          is_string(current($keys)) ||
+          (current($keys) == 1 && $array[1] == 1) // handle (0 => 4), (1 => 1)
+        )
+      )
+    ) {
+      $array = $keys;
+    }
   }
 
 }

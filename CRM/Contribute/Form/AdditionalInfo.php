@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Contribute_Form_AdditionalInfo {
 
@@ -90,10 +88,7 @@ class CRM_Contribute_Form_AdditionalInfo {
   /**
    * Build the form object for Additional Details.
    *
-   *
    * @param CRM_Core_Form $form
-   *
-   * @return void
    */
   public static function buildAdditionalDetail(&$form) {
     //Additional information section
@@ -177,10 +172,7 @@ class CRM_Contribute_Form_AdditionalInfo {
    *
    * Build the form object for PaymentReminders Information.
    *
-   *
    * @param CRM_Core_Form $form
-   *
-   * @return void
    */
   public static function buildPaymentReminders(&$form) {
     //PaymentReminders section
@@ -203,7 +195,7 @@ class CRM_Contribute_Form_AdditionalInfo {
    */
   public static function processPremium($params, $contributionID, $premiumID = NULL, $options = array()) {
     $selectedProductID = $params['product_name'][0];
-    $selectedProductOptionID = $params['product_name'][1];
+    $selectedProductOptionID = CRM_Utils_Array::value(1, $params['product_name']);
 
     $dao = new CRM_Contribute_DAO_ContributionProduct();
     $dao->contribution_id = $contributionID;
@@ -260,8 +252,6 @@ class CRM_Contribute_Form_AdditionalInfo {
    * @param int $contactID
    * @param int $contributionID
    * @param int $contributionNoteID
-   *
-   * @return void
    */
   public static function processNote($params, $contactID, $contributionID, $contributionNoteID = NULL) {
     //process note
@@ -282,11 +272,9 @@ class CRM_Contribute_Form_AdditionalInfo {
   /**
    * Process the Common data.
    *
-   *
    * @param array $params
-   * @param $formatted
+   * @param array $formatted
    * @param CRM_Core_Form $form
-   * @return void
    */
   public static function postProcessCommon(&$params, &$formatted, &$form) {
     $fields = array(
@@ -349,6 +337,9 @@ class CRM_Contribute_Form_AdditionalInfo {
     if (!empty($params['payment_instrument_id'])) {
       $paymentInstrument = CRM_Contribute_PseudoConstant::paymentInstrument();
       $params['paidBy'] = $paymentInstrument[$params['payment_instrument_id']];
+      if ($params['paidBy'] != 'Check' && isset($params['check_number'])) {
+        unset($params['check_number']);
+      }
     }
 
     // retrieve individual prefix value for honoree
@@ -485,7 +476,7 @@ class CRM_Contribute_Form_AdditionalInfo {
     $template = CRM_Core_Smarty::singleton();
     $taxAmt = $template->get_template_vars('dataArray');
     $eventTaxAmt = $template->get_template_vars('totalTaxAmount');
-    $prefixValue = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::CONTRIBUTE_PREFERENCES_NAME, 'contribution_invoice_settings');
+    $prefixValue = Civi::settings()->get('contribution_invoice_settings');
     $invoicing = CRM_Utils_Array::value('invoicing', $prefixValue);
     if ((!empty($taxAmt) || isset($eventTaxAmt)) && (isset($invoicing) && isset($prefixValue['is_email_pdf']))) {
       $isEmailPdf = TRUE;

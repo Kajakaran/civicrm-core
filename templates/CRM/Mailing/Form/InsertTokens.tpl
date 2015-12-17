@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -217,7 +217,7 @@ CRM.$(function($) {
     var
       token = $(this).val(),
       field = $(this).data('field');
-    if (field !== 'html_message') {
+    if (field.indexOf('html') < 0) {
       field = textMsgID($(this));
     }
     CRM.wysiwyg.insert('#' + field, token);
@@ -244,7 +244,7 @@ CRM.$(function($) {
   // Initialize token selector widgets
   var form = $('form.{/literal}{$form.formClass}{literal}');
   $('input.crm-token-selector', form)
-    .addClass('crm-action-menu action-icon-token')
+    .addClass('crm-action-menu fa-code')
     .change(insertToken)
     .crmSelect2({
       data: form.data('tokens'),

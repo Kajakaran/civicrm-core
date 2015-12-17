@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -131,6 +131,7 @@ function _civicrm_api3_contact_create_spec(&$params) {
   );
   $params['prefix_id']['api.aliases'] = array('individual_prefix', 'individual_prefix_id');
   $params['suffix_id']['api.aliases'] = array('individual_suffix', 'individual_suffix_id');
+  $params['gender_id']['api.aliases'] = array('gender');
 }
 
 /**
@@ -216,30 +217,51 @@ function _civicrm_api3_contact_get_spec(&$params) {
   $params['state_province_id'] = array(
     'title' => 'Primary Address State Province ID',
     'type' => CRM_Utils_Type::T_INT,
+    'pseudoconstant' => array(
+      'table' => 'civicrm_state_province',
+    ),
   );
   $params['state_province_name'] = array(
     'title' => 'Primary Address State Province Name',
     'type' => CRM_Utils_Type::T_STRING,
+    'pseudoconstant' => array(
+      'table' => 'civicrm_state_province',
+    ),
   );
   $params['state_province'] = array(
     'title' => 'Primary Address State Province',
     'type' => CRM_Utils_Type::T_STRING,
+    'pseudoconstant' => array(
+      'table' => 'civicrm_state_province',
+    ),
   );
   $params['country_id'] = array(
     'title' => 'Primary Address Country ID',
     'type' => CRM_Utils_Type::T_INT,
+    'pseudoconstant' => array(
+      'table' => 'civicrm_country',
+    ),
   );
   $params['country'] = array(
     'title' => 'Primary Address country',
     'type' => CRM_Utils_Type::T_STRING,
+    'pseudoconstant' => array(
+      'table' => 'civicrm_country',
+    ),
   );
   $params['worldregion_id'] = array(
     'title' => 'Primary Address World Region ID',
     'type' => CRM_Utils_Type::T_INT,
+    'pseudoconstant' => array(
+      'table' => 'civicrm_world_region',
+    ),
   );
   $params['worldregion'] = array(
     'title' => 'Primary Address World Region',
     'type' => CRM_Utils_Type::T_STRING,
+    'pseudoconstant' => array(
+      'table' => 'civicrm_world_region',
+    ),
   );
   $params['phone_id'] = array(
     'title' => 'Primary Phone ID',
@@ -336,8 +358,6 @@ function _civicrm_api3_contact_get_supportanomalies(&$params, &$options) {
       $groups = explode(',', $params['filter.group_id']);
     }
     unset($params['filter.group_id']);
-    $groups = array_flip($groups);
-    $groups[key($groups)] = 1;
     $options['input_params']['group'] = $groups;
   }
 }
@@ -622,6 +642,37 @@ function _civicrm_api3_greeting_format_params($params) {
 }
 
 /**
+ * Adjust Metadata for Get action.
+ *
+ * @param array $params
+ *   Array of parameters determined by getfields.
+ */
+function _civicrm_api3_contact_getquick_spec(&$params) {
+  $params['name']['api.required'] = TRUE;
+  $params['name']['title'] = ts('String to search on');
+  $params['name']['type'] = CRM_Utils_Type::T_STRING;
+  $params['field']['type'] = CRM_Utils_Type::T_STRING;
+  $params['field']['title'] = ts('Field to search on');
+  $params['field']['options'] = array(
+    '',
+    'id',
+    'contact_id',
+    'external_identifier',
+    'first_name',
+    'last_name',
+    'job_title',
+    'postal_code',
+    'street_address',
+    'email',
+    'city',
+    'phone_numeric',
+  );
+  $params['table_name']['type'] = CRM_Utils_Type::T_STRING;
+  $params['table_name']['title'] = ts('Table alias to search on');
+  $params['table_name']['api.default'] = 'cc';
+}
+
+/**
  * Old Contact quick search api.
  *
  * @deprecated
@@ -632,9 +683,8 @@ function _civicrm_api3_greeting_format_params($params) {
  * @throws \API_Exception
  */
 function civicrm_api3_contact_getquick($params) {
-  civicrm_api3_verify_mandatory($params, NULL, array('name'));
   $name = CRM_Utils_Type::escape(CRM_Utils_Array::value('name', $params), 'String');
-
+  $table_name = CRM_Utils_String::munge($params['table_name']);
   // get the autocomplete options from settings
   $acpref = explode(CRM_Core_DAO::VALUE_SEPARATOR,
     CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
@@ -663,6 +713,10 @@ function civicrm_api3_contact_getquick($params) {
     if (!in_array($searchField, $list)) {
       $list[] = $searchField;
     }
+  }
+  else {
+    // Set field name to first name for exact match checking.
+    $field_name = 'sort_name';
   }
 
   $select = $actualSelectElements = array('sort_name');
@@ -723,7 +777,7 @@ function civicrm_api3_contact_getquick($params) {
   }
   $from = implode(' ', $from);
   $limit = (int) CRM_Utils_Array::value('limit', $params);
-  $limit = $limit > 0 ? $limit : 10;
+  $limit = $limit > 0 ? $limit : Civi::settings()->get('search_autocomplete_count');
 
   // add acl clause here
   list($aclFrom, $aclWhere) = CRM_Contact_BAO_Contact_Permission::cacheClause('cc');
@@ -804,7 +858,6 @@ function civicrm_api3_contact_getquick($params) {
 
   //CRM-10687
   if (!empty($params['field_name']) && !empty($params['table_name'])) {
-    $table_name = CRM_Utils_String::munge($params['table_name']);
     $whereClause = " WHERE ( $table_name.$field_name LIKE '$strSearch') {$where}";
     $exactWhereClause = " WHERE ( $table_name.$field_name = '$name') {$where}";
     // Search by id should be exact
@@ -813,16 +866,13 @@ function civicrm_api3_contact_getquick($params) {
     }
   }
   else {
+    $whereClause = " WHERE ( sort_name LIKE '$strSearch' $includeNickName ) {$where} ";
+    $exactWhereClause = " WHERE ( sort_name LIKE '$name' $exactIncludeNickName ) {$where} ";
     if ($config->includeEmailInName) {
       if (!in_array('email', $list)) {
         $includeEmailFrom = "LEFT JOIN civicrm_email eml ON ( cc.id = eml.contact_id AND eml.is_primary = 1 )";
       }
-      $whereClause = " WHERE ( email LIKE '$strSearch' OR sort_name LIKE '$strSearch' $includeNickName ) {$where} ";
-      $exactWhereClause = " WHERE ( email LIKE '$name' OR sort_name LIKE '$name' $exactIncludeNickName ) {$where} ";
-    }
-    else {
-      $whereClause = " WHERE ( sort_name LIKE '$strSearch' $includeNickName ) {$where} ";
-      $exactWhereClause = " WHERE ( sort_name LIKE '$name' $exactIncludeNickName ) {$where} ";
+      $emailWhere = " WHERE email LIKE '$strSearch'";
     }
   }
 
@@ -843,35 +893,49 @@ function civicrm_api3_contact_getquick($params) {
       ";
   }
 
-  $orderByInner = "";
-  $orderByOuter = "ORDER BY exactFirst";
+  $orderByInner = $orderByOuter = "ORDER BY exactFirst";
   if ($config->includeOrderByClause) {
-    $orderByInner = "ORDER BY sort_name";
+    $orderByInner = "ORDER BY exactFirst, sort_name";
     $orderByOuter .= ", sort_name";
   }
 
   //CRM-5954
   $query = "
-        SELECT DISTINCT(id), data, sort_name {$selectAliases}
+        SELECT DISTINCT(id), data, sort_name {$selectAliases}, exactFirst
         FROM   (
-            ( SELECT 0 as exactFirst, cc.id as id, CONCAT_WS( ' :: ', {$actualSelectElements} ) as data {$select}
+            ( SELECT IF($table_name.$field_name = '{$name}', 0, 1) as exactFirst, cc.id as id, CONCAT_WS( ' :: ',
+            {$actualSelectElements} )
+             as data
+            {$select}
             FROM   civicrm_contact cc {$from}
     {$aclFrom}
-    {$additionalFrom} {$includeEmailFrom}
-    {$exactWhereClause}
-    LIMIT 0, {$limit} )
-    UNION
-    ( SELECT 1 as exactFirst, cc.id as id, CONCAT_WS( ' :: ', {$actualSelectElements} ) as data {$select}
-    FROM   civicrm_contact cc {$from}
-    {$aclFrom}
-    {$additionalFrom} {$includeEmailFrom}
+    {$additionalFrom}
     {$whereClause}
     {$orderByInner}
     LIMIT 0, {$limit} )
-) t
-{$orderByOuter}
-LIMIT    0, {$limit}
     ";
+
+  if (!empty($emailWhere)) {
+    $query .= "
+      UNION (
+        SELECT IF($table_name.$field_name = '{$name}', 0, 1) as exactFirst, cc.id as id, CONCAT_WS( ' :: ',
+          {$actualSelectElements} )
+          as data
+          {$select}
+          FROM   civicrm_contact cc {$from}
+        {$aclFrom}
+        {$additionalFrom} {$includeEmailFrom}
+        {$emailWhere} AND cc.is_deleted = 0 " . ($aclWhere ? " AND $aclWhere " : '') . "
+        {$orderByInner}
+      LIMIT 0, {$limit}
+      )
+    ";
+  }
+  $query .= ") t
+    {$orderByOuter}
+    LIMIT    0, {$limit}
+  ";
+
   // send query to hook to be modified if needed
   CRM_Utils_Hook::contactListQuery($query,
     $name,
@@ -946,23 +1010,43 @@ function _civicrm_api3_contact_deprecation() {
  *
  * @return array
  *   API Result Array
+ * @throws CiviCRM_API3_Exception
  */
 function civicrm_api3_contact_merge($params) {
   $mode = CRM_Utils_Array::value('mode', $params, 'safe');
   $autoFlip = CRM_Utils_Array::value('auto_flip', $params, TRUE);
 
-  $dupePairs = array(array(
-  'srcID' => CRM_Utils_Array::value('main_id', $params),
+  $dupePairs = array(
+    array(
+      'srcID' => CRM_Utils_Array::value('main_id', $params),
       'dstID' => CRM_Utils_Array::value('other_id', $params),
-    ));
-  $result = CRM_Dedupe_Merger::merge($dupePairs, array(), $mode, $autoFlip);
+    ),
+  );
 
-  if ($result['is_error'] == 0) {
-    return civicrm_api3_create_success();
+  if (($result = CRM_Dedupe_Merger::merge($dupePairs, array(), $mode, $autoFlip)) != FALSE) {
+    return civicrm_api3_create_success($result, $params);
   }
-  else {
-    return civicrm_api3_create_error($result['messages']);
-  }
+  throw new CiviCRM_API3_Exception('Merge failed');
+}
+
+/**
+ * Adjust metadata for contact_proximity api function.
+ *
+ * @param array $params
+ */
+function _civicrm_api3_contact_merge_spec(&$params) {
+  $params['main_id'] = array(
+    'title' => 'ID of the contact to merge & remove',
+    'description' => ts('Wow - these 2 params are the logical reverse of what I expect - but what to do?'),
+    'api.required' => 1,
+    'type' => CRM_Utils_Type::T_INT,
+  );
+  $params['other_id'] = array(
+    'title' => 'ID of the contact to keep',
+    'description' => ts('Wow - these 2 params are the logical reverse of what I expect - but what to do?'),
+    'api.required' => 1,
+    'type' => CRM_Utils_Type::T_INT,
+  );
 }
 
 /**
@@ -1137,4 +1221,43 @@ function _civicrm_api3_contact_getlist_output($result, $request) {
     }
   }
   return $output;
+}
+
+/**
+ * Check for duplicate contacts.
+ *
+ * @param array $params
+ *   Params per getfields metadata.
+ *
+ * @return array
+ *   API formatted array
+ */
+function civicrm_api3_contact_duplicatecheck($params) {
+  $dedupeParams = CRM_Dedupe_Finder::formatParams($params['match'], $params['match']['contact_type']);
+
+  // CRM-6431
+  // setting 'check_permission' here means that the dedupe checking will be carried out even if the
+  // person does not have permission to carry out de-dupes
+  // this is similar to the front end form
+  if (isset($params['check_permission'])) {
+    $dedupeParams['check_permission'] = $params['check_permission'];
+  }
+
+  $dupes = CRM_Dedupe_Finder::dupesByParams($dedupeParams, $params['match']['contact_type'], 'Unsupervised', array(), CRM_Utils_Array::value('dedupe_rule_id', $params));
+  $values = empty($dupes) ? array() : array_fill_keys($dupes, array());
+  return civicrm_api3_create_success($values, $params, 'Contact', 'duplicatecheck');
+}
+
+/**
+ * Declare metadata for contact dedupe function.
+ *
+ * @param $params
+ */
+function _civicrm_api3_contact_duplicatecheck_spec(&$params) {
+  $params['dedupe_rule_id'] = array(
+    'title' => 'Dedupe Rule ID (optional)',
+    'description' => 'This will default to the built in unsupervised rule',
+    'type' => CRM_Utils_Type::T_INT,
+  );
+  // @todo declare 'match' parameter. We don't have a standard for type = array yet.
 }

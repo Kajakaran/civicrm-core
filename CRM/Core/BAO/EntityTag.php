@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -30,15 +30,11 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Core_BAO_EntityTag extends CRM_Core_DAO_EntityTag {
 
   /**
-   *
-   * Given a contact id, it returns an array of tag id's the
-   * contact belongs to.
+   * Given a contact id, it returns an array of tag id's the contact belongs to.
    *
    * @param int $entityID
    *   Id of the entity usually the contactID.
@@ -47,7 +43,6 @@ class CRM_Core_BAO_EntityTag extends CRM_Core_DAO_EntityTag {
    *
    * @return array
    *   reference $tag array of category id's the contact belongs to.
-   *
    */
   public static function &getTag($entityID, $entityTable = 'civicrm_contact') {
     $tags = array();
@@ -220,10 +215,8 @@ class CRM_Core_BAO_EntityTag extends CRM_Core_DAO_EntityTag {
    *
    * @param array $params
    *   (reference) an assoc array of name/value pairs.
-   * @param $entityTable
+   * @param string $entityTable
    * @param int $entityID
-   *
-   * @return void
    */
   public static function create(&$params, $entityTable, $entityID) {
     // get categories for the entity id
@@ -281,6 +274,11 @@ class CRM_Core_BAO_EntityTag extends CRM_Core_DAO_EntityTag {
 
   /**
    * Get contact tags.
+   *
+   * @param int $contactID
+   * @param bool $count
+   *
+   * @return array
    */
   public static function getContactTags($contactID, $count = FALSE) {
     $contactTags = array();
@@ -314,6 +312,12 @@ class CRM_Core_BAO_EntityTag extends CRM_Core_DAO_EntityTag {
 
   /**
    * Get child contact tags given parentId.
+   *
+   * @param int $parentId
+   * @param int $entityId
+   * @param string $entityTable
+   *
+   * @return array
    */
   public static function getChildEntityTags($parentId, $entityId, $entityTable = 'civicrm_contact') {
     $entityTags = array();
@@ -336,6 +340,11 @@ class CRM_Core_BAO_EntityTag extends CRM_Core_DAO_EntityTag {
 
   /**
    * Merge two tags: tag B into tag A.
+   *
+   * @param int $tagAId
+   * @param int $tagBId
+   *
+   * @return array
    */
   public function mergeTags($tagAId, $tagBId) {
     $queryParams = array(
