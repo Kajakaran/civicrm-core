@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -80,10 +80,10 @@ class CRM_Member_Form_MembershipBlock extends CRM_Contribute_Form_ContributionPa
       $pFIDs = array();
       if ($priceSetId) {
         CRM_Core_DAO::commonRetrieveAll('CRM_Price_DAO_PriceField', 'price_set_id', $priceSetId, $pFIDs, $return = array(
-            'html_type',
-            'name',
-            'label',
-          ));
+          'html_type',
+          'name',
+          'label',
+        ));
         foreach ($pFIDs as $pid => $pValue) {
           if ($pValue['html_type'] == 'Radio' && $pValue['name'] == 'membership_amount') {
             $defaults['mem_price_field_id'] = $pValue['id'];
@@ -121,11 +121,11 @@ class CRM_Member_Form_MembershipBlock extends CRM_Contribute_Form_ContributionPa
 
       $this->addElement('text', 'new_title', ts('Title - New Membership'), CRM_Core_DAO::getAttribute('CRM_Member_DAO_MembershipBlock', 'new_title'));
 
-      $this->addWysiwyg('new_text', ts('Introductory Message - New Memberships'), CRM_Core_DAO::getAttribute('CRM_Member_DAO_MembershipBlock', 'new_text'));
+      $this->add('wysiwyg', 'new_text', ts('Introductory Message - New Memberships'), CRM_Core_DAO::getAttribute('CRM_Member_DAO_MembershipBlock', 'new_text'));
 
       $this->addElement('text', 'renewal_title', ts('Title - Renewals'), CRM_Core_DAO::getAttribute('CRM_Member_DAO_MembershipBlock', 'renewal_title'));
 
-      $this->addWysiwyg('renewal_text', ts('Introductory Message - Renewals'), CRM_Core_DAO::getAttribute('CRM_Member_DAO_MembershipBlock', 'renewal_text'));
+      $this->add('wysiwyg', 'renewal_text', ts('Introductory Message - Renewals'), CRM_Core_DAO::getAttribute('CRM_Member_DAO_MembershipBlock', 'renewal_text'));
 
       $this->addElement('checkbox', 'is_required', ts('Require Membership Signup'));
       $this->addElement('checkbox', 'display_min_fee', ts('Display Membership Fee'));
@@ -196,18 +196,17 @@ class CRM_Member_Form_MembershipBlock extends CRM_Contribute_Form_ContributionPa
     $single = $session->get('singleForm');
     if ($single) {
       $this->addButtons(array(
-          array(
-            'type' => 'next',
-            'name' => ts('Save'),
-            'spacing' => '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;',
-            'isDefault' => TRUE,
-          ),
-          array(
-            'type' => 'cancel',
-            'name' => ts('Cancel'),
-          ),
-        )
-      );
+        array(
+          'type' => 'next',
+          'name' => ts('Save'),
+          'spacing' => '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;',
+          'isDefault' => TRUE,
+        ),
+        array(
+          'type' => 'cancel',
+          'name' => ts('Cancel'),
+        ),
+      ));
     }
     else {
       parent::buildQuickForm();
@@ -231,7 +230,7 @@ class CRM_Member_Form_MembershipBlock extends CRM_Contribute_Form_ContributionPa
 
     if (!empty($params['member_price_set_id'])) {
       //check if this price set has membership type both auto-renew and non-auto-renew memberships.
-      $bothTypes = CRM_Price_BAO_PriceSet::checkMembershipPriceSet($params['member_price_set_id']);
+      $bothTypes = CRM_Price_BAO_PriceSet::isMembershipPriceSetContainsMixOfRenewNonRenew($params['member_price_set_id']);
 
       //check for supporting payment processors
       //if both auto-renew and non-auto-renew memberships
@@ -243,19 +242,13 @@ class CRM_Member_Form_MembershipBlock extends CRM_Contribute_Form_ContributionPa
         $paymentProcessorId = explode(CRM_Core_DAO::VALUE_SEPARATOR, $paymentProcessorIds);
 
         if (!empty($paymentProcessorId)) {
-          $paymentProcessorType = CRM_Core_PseudoConstant::paymentProcessorType(FALSE, NULL, 'name');
           foreach ($paymentProcessorId as $pid) {
             if ($pid) {
-              $paymentProcessorTypeId = CRM_Core_DAO::getFieldValue('CRM_Financial_DAO_PaymentProcessor',
-                $pid, 'payment_processor_type_id'
-              );
+              $processor = Civi\Payment\System::singleton()->getById($pid);
+              if (!$processor->supports('MultipleConcurrentPayments')) {
+                $errors['member_price_set_id'] = ts('The membership price set associated with this online contribution allows a user to select BOTH an auto-renew AND a non-auto-renew membership. This requires submitting multiple processor transactions, and is not supported for one or more of the payment processors enabled under the Amounts tab.');
+              }
             }
-            if (!($paymentProcessorTypeId == CRM_Utils_Array::key('PayPal', $paymentProcessorType) ||
-              ($paymentProcessorTypeId == CRM_Utils_Array::key('AuthNet', $paymentProcessorType)))
-            ) {
-              $errors['member_price_set_id'] = ts('The membership price set associated with this online contribution allows a user to select BOTH an auto-renew AND a non-auto-renew membership. This requires submitting multiple processor transactions, and is not supported for one or more of the payment processors enabled under the Amounts tab.');
-            }
-
           }
         }
       }
@@ -272,12 +265,6 @@ class CRM_Member_Form_MembershipBlock extends CRM_Contribute_Form_ContributionPa
         }
       }
 
-      if ($contributionPageId && !empty($params['member_price_set_id']) &&
-        CRM_Core_DAO::getFieldValue('CRM_Contribute_DAO_ContributionPage', $contributionPageId, 'amount_block_is_active')
-      ) {
-        $errors['member_price_set_id'] = ts('You cannot use Membership Price Sets with the Contribution Amounts section. However, a membership price set may include additional fields for non-membership options that requires an additional fee (e.g. magazine subscription) or an additional voluntary contribution.');
-      }
-
       if (!empty($params['member_price_set_id'])) {
         return $errors;
       }
@@ -289,12 +276,26 @@ class CRM_Member_Form_MembershipBlock extends CRM_Contribute_Form_ContributionPa
       }
       else {
         $membershipType = array_values($params['membership_type']);
+        $isRecur = CRM_Core_DAO::getFieldValue('CRM_Contribute_DAO_ContributionPage', $contributionPageId, 'is_recur');
         if (array_sum($membershipType) == 0) {
           $errors['membership_type'] = ts('Please select at least one Membership Type to include in the Membership section of this page.');
         }
         elseif (array_sum($membershipType) > CRM_Price_Form_Field::NUM_OPTION) {
           // for CRM-13079
           $errors['membership_type'] = ts('You cannot select more than %1 choices. For more complex functionality, please use a Price Set.', array(1 => CRM_Price_Form_Field::NUM_OPTION));
+        }
+        elseif ($isRecur) {
+          if (empty($params['is_separate_payment']) && array_sum($membershipType) != 0) {
+            $errors['is_separate_payment'] = ts('You need to enable Separate Membership Payment when online contribution page is configured for both Membership and Recurring Contribution');
+          }
+          elseif (!empty($params['is_separate_payment'])) {
+            foreach ($params['membership_type'] as $mt => $dontCare) {
+              if (!empty($params["auto_renew_$mt"])) {
+                $errors["auto_renew_$mt"] = ts('You cannot enable both Recurring Contributions and Auto-renew memberships on the same online contribution page');
+                break;
+              }
+            }
+          }
         }
       }
 
@@ -350,6 +351,10 @@ class CRM_Member_Form_MembershipBlock extends CRM_Contribute_Form_ContributionPa
             $membershipTypes[$k] = CRM_Utils_Array::value("auto_renew_$k", $params);
           }
         }
+      }
+
+      if ($this->_id && !empty($params['member_price_set_id'])) {
+        CRM_Core_DAO::setFieldValue('CRM_Contribute_DAO_ContributionPage', $this->_id, 'amount_block_is_active', 0);
       }
 
       // check for price set.

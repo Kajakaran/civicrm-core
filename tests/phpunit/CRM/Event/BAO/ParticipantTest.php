@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,14 +25,9 @@
  +--------------------------------------------------------------------+
  */
 
-
-require_once 'CiviTest/CiviUnitTestCase.php';
-require_once 'CiviTest/Contact.php';
-require_once 'CiviTest/Event.php';
-require_once 'CiviTest/Participant.php';
-
 /**
  * Class CRM_Event_BAO_ParticipantTest
+ * @group headless
  */
 class CRM_Event_BAO_ParticipantTest extends CiviUnitTestCase {
 
@@ -120,6 +115,7 @@ class CRM_Event_BAO_ParticipantTest extends CiviUnitTestCase {
       'discount_amount' => NULL,
       'cart_id' => NULL,
       'must_wait' => NULL,
+      'transferred_to_contact_id' => NULL, //CRM-16761
     );
 
     foreach ($compareValues as $key => $value) {
@@ -140,7 +136,7 @@ class CRM_Event_BAO_ParticipantTest extends CiviUnitTestCase {
     $params = $values = $ids = array();
     $participantId = Participant::create($this->_contactId, $this->_eventId);
     $fetchParticipant = CRM_Event_BAO_Participant::getValues($params, $values, $ids);
-    $this->assertNull($fetchParticipant, 'In line ' . __LINE__);
+    $this->assertNull($fetchParticipant);
 
     Contact::delete($this->_contactId);
     Event::delete($this->_eventId);

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -134,7 +134,8 @@ class WebTest_Campaign_PledgeTest extends CiviSeleniumTestCase {
     $this->waitForElementPresent('crm-contact-actions-link');
 
     // now add pledge from contact summary
-    $this->click("//a[@id='crm-contact-actions-link']/span/div");
+    $this->click("xpath=//div[@class='crm-actions-ribbon']/ul[@id='actions']/li[@class='crm-contact-activity crm-summary-block']/div/a[@id='crm-contact-actions-link']");
+    $this->waitForElementPresent('crm-contact-actions-list');
 
     // wait for add plegde link
     $this->waitForElementPresent('link=Add Pledge');

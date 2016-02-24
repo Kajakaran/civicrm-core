@@ -1,13 +1,13 @@
 <?php
-require_once 'CiviTest/CiviUnitTestCase.php';
 
 /**
  * Class CRM_Case_BAO_CaseTypeTest
+ * @group headless
  */
 class CRM_Case_BAO_CaseTypeTest extends CiviUnitTestCase {
 
   /**
-   * Provide a series of test-scenarios. Each scenario includes a case-type defintion expressed as
+   * Provide a series of test-scenarios. Each scenario includes a case-type definition expressed as
    * JSON and equivalent XML.
    *
    * @return array
@@ -30,7 +30,7 @@ class CRM_Case_BAO_CaseTypeTest extends CiviUnitTestCase {
     $fixtures['one-item-in-each'] = array(
       'json' => json_encode(array(
         'activityTypes' => array(
-          array('name' => 'First act (foréign éxamplé)'),
+          array('name' => 'First act (foréign éxamplé, &c)'),
         ),
         'activitySets' => array(
           array(

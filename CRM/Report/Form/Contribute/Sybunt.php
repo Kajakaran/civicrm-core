@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Report_Form_Contribute_Sybunt extends CRM_Report_Form {
 
@@ -39,11 +37,20 @@ class CRM_Report_Form_Contribute_Sybunt extends CRM_Report_Form {
     'barChart' => 'Bar Chart',
     'pieChart' => 'Pie Chart',
   );
+
+  protected $_customGroupExtends = array(
+    'Contact',
+    'Individual',
+    'Contribution',
+  );
+
   public $_drilldownReport = array('contribute/detail' => 'Link to Detail Report');
 
   /**
    */
   public function __construct() {
+    $this->_rollup = 'WITH ROLLUP';
+    $this->_autoIncludeIndexedFieldsAsOrderBys = 1;
     $yearsInPast = 10;
     $yearsInFuture = 1;
     $date = CRM_Core_SelectValues::date('custom', NULL, $yearsInPast, $yearsInFuture);
@@ -74,8 +81,56 @@ class CRM_Report_Form_Contribute_Sybunt extends CRM_Report_Form {
           'first_name' => array(
             'title' => ts('First Name'),
           ),
+          'middle_name' => array(
+            'title' => ts('Middle Name'),
+          ),
           'last_name' => array(
             'title' => ts('Last Name'),
+          ),
+          'id' => array(
+            'no_display' => TRUE,
+            'required' => TRUE,
+          ),
+          'gender_id' => array(
+            'title' => ts('Gender'),
+          ),
+          'birth_date' => array(
+            'title' => ts('Birth Date'),
+          ),
+          'age' => array(
+            'title' => ts('Age'),
+            'dbAlias' => 'TIMESTAMPDIFF(YEAR, contact_civireport.birth_date, CURDATE())',
+          ),
+          'contact_type' => array(
+            'title' => ts('Contact Type'),
+          ),
+          'contact_sub_type' => array(
+            'title' => ts('Contact Subtype'),
+          ),
+        ),
+        'grouping' => 'contact-fields',
+        'order_bys' => array(
+          'sort_name' => array(
+            'title' => ts('Last Name, First Name'),
+            'default' => '1',
+            'default_weight' => '0',
+            'default_order' => 'ASC',
+          ),
+          'first_name' => array(
+            'name' => 'first_name',
+            'title' => ts('First Name'),
+          ),
+          'gender_id' => array(
+            'name' => 'gender_id',
+            'title' => ts('Gender'),
+          ),
+          'birth_date' => array(
+            'name' => 'birth_date',
+            'title' => ts('Birth Date'),
+          ),
+          'age_at_event' => array(
+            'name' => 'age_at_event',
+            'title' => ts('Age at Event'),
           ),
           'contact_type' => array(
             'title' => ts('Contact Type'),
@@ -89,7 +144,29 @@ class CRM_Report_Form_Contribute_Sybunt extends CRM_Report_Form {
             'title' => ts('Donor Name'),
             'operator' => 'like',
           ),
+          'id' => array(
+            'title' => ts('Contact ID'),
+            'no_display' => TRUE,
+          ),
+          'gender_id' => array(
+            'title' => ts('Gender'),
+            'operatorType' => CRM_Report_Form::OP_MULTISELECT,
+            'options' => CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id'),
+          ),
+          'birth_date' => array(
+            'title' => ts('Birth Date'),
+            'operatorType' => CRM_Report_Form::OP_DATE,
+          ),
+          'contact_type' => array(
+            'title' => ts('Contact Type'),
+          ),
+          'contact_sub_type' => array(
+            'title' => ts('Contact Subtype'),
+          ),
         ),
+      ),
+      'civicrm_line_item' => array(
+        'dao' => 'CRM_Price_DAO_LineItem',
       ),
       'civicrm_email' => array(
         'dao' => 'CRM_Core_DAO_Email',
@@ -143,11 +220,13 @@ class CRM_Report_Form_Contribute_Sybunt extends CRM_Report_Form {
             'operatorType' => CRM_Report_Form::OP_SELECT,
             'options' => $optionYear,
             'default' => date('Y'),
+            'type' => CRM_Utils_Type::T_INT,
           ),
           'financial_type_id' => array(
             'title' => ts('Financial Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
-            'options' => CRM_Contribute_PseudoConstant::financialType(),
+            'options' => CRM_Financial_BAO_FinancialType::getAvailableFinancialTypes(),
           ),
           'contribution_status_id' => array(
             'title' => ts('Contribution Status'),
@@ -317,7 +396,7 @@ class CRM_Report_Form_Contribute_Sybunt extends CRM_Report_Form {
     $this->assign('chartSupported', TRUE);
     $this->_groupBy = "Group BY {$this->_aliases['civicrm_contribution']}.contact_id, " .
       self::fiscalYearOffset($this->_aliases['civicrm_contribution'] .
-        '.receive_date') . " WITH ROLLUP ";
+        '.receive_date') . " "  . " " . $this->_rollup;
   }
 
   /**
@@ -349,12 +428,12 @@ class CRM_Report_Form_Contribute_Sybunt extends CRM_Report_Form {
   public function postProcess() {
     // get ready with post process params
     $this->beginPostProcess();
-
     $this->buildACLClause($this->_aliases['civicrm_contact']);
     $this->select();
     $this->from();
     $this->where();
     $this->groupBy();
+    $this->getPermissionedFTQuery($this);
 
     $rows = $contactIds = array();
     if (empty($this->_params['charts'])) {
@@ -511,6 +590,24 @@ class CRM_Report_Form_Contribute_Sybunt extends CRM_Report_Form {
       }
 
       $entryFound = $this->alterDisplayAddressFields($row, $rows, $rowNum, 'contribute/detail', 'List all contribution(s)') ? TRUE : $entryFound;
+
+      //handle gender
+      if (array_key_exists('civicrm_contact_gender_id', $row)) {
+        if ($value = $row['civicrm_contact_gender_id']) {
+          $gender = CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id');
+          $rows[$rowNum]['civicrm_contact_gender_id'] = $gender[$value];
+        }
+        $entryFound = TRUE;
+      }
+
+      // display birthday in the configured custom format
+      if (array_key_exists('civicrm_contact_birth_date', $row)) {
+        $birthDate = $row['civicrm_contact_birth_date'];
+        if ($birthDate) {
+          $rows[$rowNum]['civicrm_contact_birth_date'] = CRM_Utils_Date::customFormat($birthDate, '%Y%m%d');
+        }
+        $entryFound = TRUE;
+      }
 
       // skip looking further in rows, if first row itself doesn't
       // have the column we need

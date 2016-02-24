@@ -1,7 +1,7 @@
 <?php
 /*
    +--------------------------------------------------------------------+
-   | CiviCRM version 4.6                                                |
+   | CiviCRM version 4.7                                                |
    +--------------------------------------------------------------------+
    | Copyright CiviCRM LLC (c) 2004-2015                                |
    +--------------------------------------------------------------------+
@@ -99,7 +99,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->webtestLogout();
 
     //Go to online membership signup page
-    $this->openCiviPage("contribute/transact", "reset=1&id=2", "_qf_Main_upload-bottom");
+    $this->openCiviPage("contribute/transact", "reset=1&id=2&action=preview", "_qf_Main_upload-bottom");
 
     $this->click("xpath=//div[@class='crm-section membership_amount-section']/div[2]/div[2]/span/label/span[1][contains(text(),'Student')]");
 
@@ -136,6 +136,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->openCiviPage("member/search", "reset=1", "member_end_date_high");
 
     $this->type("sort_name", "$lastName $firstName");
+    $this->click("xpath=//tr/td[1]/p/label[contains(text(),'Membership is a Test?')]/../label[contains(text(),'Yes')]/preceding-sibling::input[1]");
     $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->click('css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->waitForElementPresent("_qf_MembershipView_cancel-bottom");
@@ -156,7 +157,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     //logout
     $this->webtestLogout();
 
-    $this->openCiviPage("contribute/transact", "reset=1&id=2", "_qf_Main_upload-bottom");
+    $this->openCiviPage("contribute/transact", "reset=1&id=2&action=preview", "_qf_Main_upload-bottom");
 
     $this->click("xpath=//div[@class='crm-section membership_amount-section']/div[2]/div[2]/span/label/span[1][contains(text(),'Student')]");
 
@@ -191,6 +192,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->openCiviPage("member/search", "reset=1", "member_end_date_high");
 
     $this->type("sort_name", "$lastName $firstName");
+    $this->click("xpath=//tr/td[1]/p/label[contains(text(),'Membership is a Test?')]/../label[contains(text(),'Yes')]/preceding-sibling::input[1]");
     $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->click('css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->waitForElementPresent("_qf_MembershipView_cancel-bottom");
@@ -269,7 +271,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $lastName = 'An' . substr(sha1(rand()), 0, 7);
 
     //Go to online membership signup page
-    $this->openCiviPage("contribute/transact", "reset=1&id=2", "_qf_Main_upload-bottom");
+    $this->openCiviPage("contribute/transact", "reset=1&id=2&action=preview", "_qf_Main_upload-bottom");
     $this->click("xpath=//div[@class='crm-section membership_amount-section']/div[2]/div[1]/span/label/span[1][contains(text(),'General')]");
     //Type first name and last name
     $this->type("first_name", $firstName);
@@ -301,6 +303,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->openCiviPage("member/search", "reset=1", "member_end_date_high");
 
     $this->type("sort_name", "$lastName $firstName");
+    $this->click("xpath=//tr/td[1]/p/label[contains(text(),'Membership is a Test?')]/../label[contains(text(),'Yes')]/preceding-sibling::input[1]");
     $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->click('css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->waitForElementPresent("_qf_MembershipView_cancel-bottom");
@@ -321,7 +324,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
         preg_quote($value)
       );
     }
-    $this->openCiviPage("contribute/transact", "reset=1&id=2", "_qf_Main_upload-bottom");
+    $this->openCiviPage("contribute/transact", "reset=1&id=2&action=preview", "_qf_Main_upload-bottom");
     $this->click("xpath=//div[@class='crm-section membership_amount-section']/div[2]/div[2]/span/label/span[1][contains(text(),'Student')]");
 
     //Credit Card Info
@@ -338,6 +341,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->openCiviPage("member/search", "reset=1", "member_end_date_high");
 
     $this->type("sort_name", "$lastName $firstName");
+    $this->click("xpath=//tr/td[1]/p/label[contains(text(),'Membership is a Test?')]/../label[contains(text(),'Yes')]/preceding-sibling::input[1]");
     $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->click('css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->waitForElementPresent("_qf_MembershipView_cancel-bottom");
@@ -398,9 +402,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->type('duration_interval', 1);
     $this->select('duration_unit', 'label=year');
     $this->select('period_type', 'value=rolling');
-
-    $this->removeSelection('relationship_type_id', 'label=- select -');
-    $this->addSelection('relationship_type_id', 'label=Employer of');
+    $this->select2('relationship_type_id', 'Employer of', TRUE);
 
     $this->click('_qf_MembershipType_upload-bottom');
     $this->waitForElementPresent('link=Add Membership Type');
@@ -478,7 +480,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->webtestLogout();
 
     //get Url for Live Contribution Page
-    $this->openCiviPage("contribute/transact", "reset=1&id=$pageId", '_qf_Main_upload-bottom');
+    $this->openCiviPage("contribute/transact", "reset=1&id=$pageId&action=preview", '_qf_Main_upload-bottom');
     $this->click("xpath=//div[@class='crm-section membership_amount-section']/div[2]/div/span/label/span[1][contains(text(),'$membershipTypeTitle')]");
     $firstName = 'Eia' . substr(sha1(rand()), 0, 4);
     $lastName = 'Ande' . substr(sha1(rand()), 0, 4);
@@ -530,6 +532,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->openCiviPage("member/search", "reset=1", "member_end_date_high");
 
     $this->type("sort_name", "$organisationName");
+    $this->click("xpath=//tr/td[1]/p/label[contains(text(),'Membership is a Test?')]/../label[contains(text(),'Yes')]/preceding-sibling::input[1]");
     $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->click('css=#memberSearch table tbody tr td span a.action-item:first-child');
     $this->waitForElementPresent("_qf_MembershipView_cancel-bottom");
@@ -551,8 +554,9 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->openCiviPage("member/search", "reset=1", "member_end_date_high");
 
     $this->type("sort_name", "$lastName, $firstName");
-    $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td span a.action-item:first-child');
-    $this->click('css=#memberSearch table tbody tr td span a.action-item:first-child');
+    $this->click("xpath=//tr/td[1]/p/label[contains(text(),'Membership is a Test?')]/../label[contains(text(),'Yes')]/preceding-sibling::input[1]");
+    $this->clickLink("_qf_Search_refresh", "css=#memberSearch table tbody tr td a.action-item:first-child");
+    $this->click("css=#memberSearch table tbody tr td a.action-item:first-child");
     $this->waitForElementPresent("_qf_MembershipView_cancel-bottom");
 
     //View Membership Record
@@ -572,7 +576,7 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     //logout
     $this->webtestLogout();
 
-    $this->openCiviPage("contribute/transact", "reset=1&id=$pageId", "_qf_Main_upload-bottom");
+    $this->openCiviPage("contribute/transact", "reset=1&id=$pageId&action=preview", "_qf_Main_upload-bottom");
 
     $this->click("xpath=//div[@class='crm-section membership_amount-section']/div[2]/div/span/label/span[1][contains(text(),'$membershipTypeTitle')]");
     $this->type("email-5", $email);
@@ -620,8 +624,9 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->openCiviPage("member/search", "reset=1", "member_end_date_high");
 
     $this->type("sort_name", "$organisationName");
-    $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td span a.action-item:first-child');
-    $this->click('css=#memberSearch table tbody tr td span a.action-item:first-child');
+    $this->click("xpath=//tr/td[1]/p/label[contains(text(),'Membership is a Test?')]/../label[contains(text(),'Yes')]/preceding-sibling::input[1]");
+    $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td a.action-item:first-child');
+    $this->click('css=#memberSearch table tbody tr td a.action-item:first-child');
     $this->waitForElementPresent("_qf_MembershipView_cancel-bottom");
 
     //View Membership Record
@@ -640,8 +645,9 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
     $this->openCiviPage("member/search", "reset=1", "member_end_date_high");
 
     $this->type("sort_name", "$lastName, $firstName");
-    $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td span a.action-item:first-child');
-    $this->click('css=#memberSearch table tbody tr td span a.action-item:first-child');
+    $this->click("xpath=//tr/td[1]/p/label[contains(text(),'Membership is a Test?')]/../label[contains(text(),'Yes')]/preceding-sibling::input[1]");
+    $this->clickLink("_qf_Search_refresh", 'css=#memberSearch table tbody tr td a.action-item:first-child');
+    $this->click('css=#memberSearch table tbody tr td a.action-item:first-child');
     $this->waitForElementPresent("_qf_MembershipView_cancel-bottom");
 
     //View Membership Record
@@ -655,6 +661,298 @@ class WebTest_Member_OnlineMembershipRenewTest extends CiviSeleniumTestCase {
       $this->verifyText("xpath=//form[@id='MembershipView']//table/tbody/tr/td[text()='{$label}']/following-sibling::td",
         preg_quote($value)
       );
+    }
+  }
+
+  /**
+   * CRM-16165
+   */
+  public function testOnRecurringContributionAndMembershipRenewal() {
+    // Log in as admin
+    $this->webtestLogin('admin');
+
+    $this->enableComponents('CiviMember');
+
+    // Log in as normal user
+    $this->webtestLogin();
+
+    // Add membership Type
+    $this->openCiviPage("admin/member/membershipType", "reset=1&action=browse");
+
+    $this->click('link=Add Membership Type');
+    $this->waitForElementPresent('_qf_MembershipType_cancel-bottom');
+
+    $title = substr(sha1(rand()), 0, 7);
+    $membershipTypeTitle = "Membership Type $title";
+    $this->type('name', "Membership Type $title");
+    $this->waitForAjaxContent();
+    $this->select2('member_of_contact_id', 'Default Organization');
+
+    $this->type('minimum_fee', '100');
+    $this->select('financial_type_id', 'value=2');
+    $this->type('duration_interval', 1);
+    $this->select('duration_unit', 'label=year');
+    $this->select('period_type', 'value=rolling');
+    $this->click('CIVICRM_QFID_1_auto_renew');
+
+    $this->click('_qf_MembershipType_upload-bottom');
+    $this->waitForElementPresent('link=Add Membership Type');
+    $this->waitForText('crm-notification-container', "The membership type 'Membership Type $title' has been saved.");
+
+    $this->waitForElementPresent("xpath=//div[@id='membership_type']/table/tbody//tr/td[1]/div[text()='{$membershipTypeTitle}']/../../td[12]/span/a[3][text()='Delete']/@href");
+    $url = $this->getAttribute("xpath=//div[@id='membership_type']/table/tbody//tr/td[1]/div[text()='{$membershipTypeTitle}']/../../td[12]/span/a[3][text()='Delete']/@href");
+    $matches = array();
+    preg_match('/id=([0-9]+)/', $url, $matches);
+    $membershipTypeId = $matches[1];
+
+    // Use default payment processor
+    $processorName = 'Test Processor';
+
+    // create contribution page with randomized title and default params
+    $hash = substr(sha1(rand()), 0, 7);
+    $rand = 2 * rand(2, 50);
+    $amountSection = FALSE;
+    $payLater = FALSE;
+    $onBehalf = FALSE;
+    $pledges = FALSE;
+    $recurring = FALSE;
+    $memberships = FALSE;
+    $memPriceSetId = NULL;
+    $friend = FALSE;
+    $profilePreId = NULL;
+    $profilePostId = NULL;
+    $premiums = FALSE;
+    $widget = FALSE;
+    $pcp = FALSE;
+
+    $contributionTitle = "Title $hash";
+    $pageId = $this->webtestAddContributionPage($hash,
+      $rand,
+      $contributionTitle,
+      array($processorName => 'Dummy'),
+      $amountSection,
+      $payLater,
+      $onBehalf,
+      $pledges,
+      $recurring,
+      $memberships,
+      $memPriceSetId,
+      $friend,
+      $profilePreId,
+      $profilePostId,
+      $premiums,
+      $widget,
+      $pcp,
+      TRUE
+    );
+
+    $this->openCiviPage("admin/contribute/amount", "reset=1&action=update&id=$pageId", '_qf_Amount_next');
+
+    //this contribution page for membership signup
+    $xpath = "xpath=//label[text() = '{$processorName}']/preceding-sibling::input[1]";
+    $this->waitForText('css=.crm-contribution-contributionpage-amount-form-block-payment_processor', $processorName);
+    $this->check($xpath);
+
+    //enable contribution amaount
+    $this->click('amount_block_is_active');
+    $this->waitForElementPresent('amount_label');
+    $this->type('amount_label', 'Additional Contribution');
+    $this->click('is_allow_other_amount');
+    $this->type('min_amount', '10');
+    $this->type('max_amount', '1000');
+
+    // save
+    $this->waitForElementPresent('_qf_Amount_submit_savenext');
+    $this->click('_qf_Amount_submit_savenext');
+    $this->waitForPageToLoad();
+
+    //enable membership block
+    $this->waitForElementPresent("member_is_active");
+    $this->check("member_is_active");
+    $this->waitForElementPresent("new_title");
+    $this->type('new_title', 'Membership Levels');
+    $this->type('membership_type_label', 'Membership Levels');
+    $this->check("membership_type_$membershipTypeId");
+    $this->check("is_required");
+    $this->clickLink('_qf_MembershipBlock_next', '_qf_MembershipBlock_next-bottom');
+
+    //Scenario 1(a) - (is_separate_payment=FALSE + recurring contribution + non-renewal membership) on Amount page
+    $this->click('link=Amounts');
+    $this->waitForElementPresent("is_recur");
+    $this->click('is_recur');
+    $this->clickLink('_qf_Amount_next', '_qf_Amount_next-bottom');
+    $this->waitForElementPresent("is_recur");
+    $this->assertTrue($this->isTextPresent("You need to enable Separate Membership Payment when online contribution page is configured for both Membership and Recurring Contribution."));
+
+    //Scenario 1(b) - (is_separate_payment=FALSE + recurring contribution + non-renewal membership) on MembershipBlock page
+    $this->click('link=Memberships');
+    $this->waitForElementPresent("is_separate_payment");
+    $this->click('is_separate_payment');//enable is_separate_payment
+    $this->clickLink('_qf_MembershipBlock_next', '_qf_MembershipBlock_next-bottom');
+    $this->click('link=Amounts');//switch back to amount page
+    $this->waitForElementPresent("is_recur");
+    $this->click('is_recur');//enable recurring contribution
+    $this->clickLink('_qf_Amount_next', '_qf_Amount_next-bottom');
+    $this->click('link=Memberships');//switch back to MembershipBlock page
+    $this->waitForElementPresent("is_separate_payment");
+    $this->uncheck('is_separate_payment');//disable is_separate_payment
+    $this->clickLink('_qf_MembershipBlock_next', '_qf_MembershipBlock_next-bottom');
+    $this->waitForElementPresent("is_separate_payment");
+    $this->assertTrue($this->isTextPresent("You need to enable Separate Membership Payment when online contribution page is configured for both Membership and Recurring Contribution"));
+
+    //Scenario 2(a) - (is_separate_payment=TRUE + recurring contribution + auto-renewal membership) on MembershipBlock page
+    $this->click('is_separate_payment');//enable is_separate_payment
+    $this->select("auto_renew_$membershipTypeId", 'value=1');//choose auto-renew as optional
+    $this->clickLink('_qf_MembershipBlock_next', '_qf_MembershipBlock_next-bottom');
+    $this->assertTrue($this->isTextPresent("You cannot enable both Recurring Contributions and Auto-renew memberships on the same online contribution page"));
+
+    //Scenario 2(b) - (is_separate_payment=TRUE + recurring contribution + auto-renewal membership) on Amount page
+    $this->click('link=Amounts');//switch back to amount page
+    $this->waitForElementPresent("is_recur");
+    $this->uncheck('is_recur');//disable recurring contribution
+    $this->clickLink('_qf_Amount_next', '_qf_Amount_next-bottom');
+    $this->click('link=Memberships');//switch back to MembershipBlock page
+    $this->waitForElementPresent("auto_renew_$membershipTypeId");
+    $this->select("auto_renew_$membershipTypeId", 'value=1');//choose auto-renew as optional
+    $this->clickLink('_qf_MembershipBlock_next', '_qf_MembershipBlock_next-bottom');
+    $this->click('link=Amounts');//switch back to amount page
+    $this->waitForElementPresent("is_recur");
+    $this->click('is_recur');//enable recurring contribution
+    $this->clickLink('_qf_Amount_next', '_qf_Amount_next-bottom');
+    $this->waitForElementPresent("is_recur");
+    $this->assertTrue($this->isTextPresent("You cannot enable both Recurring Contributions and Auto-renew memberships on the same online contribution page"));
+
+    //Scenario 3 - Online Registration on
+    // (is_separate_payment=TRUE + non-recurring Additional contribution + auto-renewal membership) setting
+    $firstName = 'Eia' . substr(sha1(rand()), 0, 4);
+    $lastName = 'Ande' . substr(sha1(rand()), 0, 4);
+    $email = $firstName . '@test.com';
+
+    $this->openCiviPage("contribute/transact", "reset=1&id=$pageId&action=preview", "_qf_Main_upload-bottom");
+
+    $this->click("xpath=//div[@class='crm-section membership_amount-section']/div[2]/div/span/label/span[1][contains(text(),'$membershipTypeTitle')]");
+    $this->waitForElementPresent("auto_renew");
+    $this->type("xpath=//div[@class='content other_amount-content']/input[@type='text']", '20');
+    $this->click("auto_renew");
+
+    //fill email
+    $this->type('email-5', $email);
+
+    //Credit Card Info
+    $this->select("credit_card_type", "value=Visa");
+    $this->select("credit_card_type", "label=Visa");
+    $this->type("credit_card_number", "4111111111111111");
+    $this->type("cvv2", "000");
+    $this->select("credit_card_exp_date[M]", "value=1");
+    $this->select("credit_card_exp_date[Y]", "value=2020");
+
+    //Billing Info
+    $this->type("billing_first_name", $firstName . "billing");
+    $this->type("billing_last_name", $lastName . "billing");
+    $this->type("billing_street_address-5", "15 Main St.");
+    $this->type(" billing_city-5", "San Jose");
+    $this->select("billing_country_id-5", "value=1228");
+    $this->select("billing_state_province_id-5", "value=1004");
+    $this->type("billing_postal_code-5", "94129");
+
+    $this->clickLink("_qf_Main_upload-bottom", "_qf_Confirm_next-bottom");
+    $this->assertTrue($this->isTextPresent("I want this membership to be renewed automatically every 1 year(s)."));
+    $this->click("_qf_Confirm_next-bottom");
+    $this->waitForPageToLoad($this->getTimeoutMsec());
+
+    $expectedParams = array(
+      'Pending' => array(
+        'total_amount' => 100.00),
+      'Completed' => array(
+        'total_amount' => 20.00,
+      ),
+    );
+
+    //Assert that additional contribution and auto-renewal membrship
+    $membership = $this->webtest_civicrm_api("Membership", "get", array('membership_type_id' => $membershipTypeId));
+    $this->assertEquals($membership['count'], 1);
+    $membershipId = $membership['id'];
+    $this->assertEquals($membership['values'][$membershipId]['membership_name'], $membershipTypeTitle);
+    //CRM-16165: if membership contribution status is pending then membership status should be pending
+    $pendingStatus = CRM_Core_DAO::getFieldValue('CRM_Member_DAO_MembershipStatus', 'Pending', 'id', 'name');
+    $this->assertEquals($membership['values'][$membershipId]['status_id'], $pendingStatus);
+
+    //check if the membership created is set to reccuring
+    $recurringContributionId = $membership['values'][$membershipId]['contribution_recur_id'];
+    $recurringContribution = $this->webtest_civicrm_api("ContributionRecur", "get", array('id' => $recurringContributionId));
+    $this->assertEquals($recurringContribution['count'], 1);
+    $this->assertEquals($recurringContribution['values'][$recurringContributionId]['auto_renew'], 1);
+    $this->assertEquals($recurringContribution['values'][$recurringContributionId]['frequency_unit'], 'year');
+    $this->assertEquals($recurringContribution['values'][$recurringContributionId]['frequency_interval'], 1);
+
+    $results = $this->webtest_civicrm_api("Contribution", "get", array('source' => array('LIKE' => "%$contributionTitle%")));
+    foreach ($results['values'] as $value) {
+      $status = $value['contribution_status'];
+      $this->assertEquals($value['total_amount'], $expectedParams[$status]['total_amount']);
+      $this->webtest_civicrm_api("Contribution", "delete", array('id' => $value['contribution_id']));
+    }
+
+    //Cleanup data before trying next combination
+    $this->webtest_civicrm_api("Membership", "delete", array('id' => $membershipId));
+    $this->webtest_civicrm_api("ContributionRecur", "delete", array('id' => $recurringContributionId));
+
+    //Scenario 4 - Online Registration on
+    // (is_separate_payment=TRUE + recurring Additional contribution + non auto-renewal membership) setting
+    $this->openCiviPage("admin/contribute/membership", "reset=1&action=update&id=$pageId");
+    $this->waitForElementPresent("auto_renew_$membershipTypeId");
+    $this->select("auto_renew_$membershipTypeId", 'value=0');
+    $this->clickLink('_qf_MembershipBlock_next', '_qf_MembershipBlock_next-bottom');
+    $this->click('link=Amounts');//switch back to amount page
+    $this->waitForElementPresent("is_recur");
+    $this->click('is_recur');//disable recurring contribution
+    $this->clickLink('_qf_Amount_next', '_qf_Amount_next-bottom');
+
+    $this->openCiviPage("contribute/transact", "reset=1&id=$pageId&action=preview", "_qf_Main_upload-bottom");
+    $this->click("xpath=//div[@class='crm-section membership_amount-section']/div[2]/div/span/label/span[1][contains(text(),'$membershipTypeTitle')]");
+    $this->type("xpath=//div[@class='content other_amount-content']/input[@type='text']", '30');
+    $this->click("is_recur");
+
+    //Credit Card Info
+    $this->select("credit_card_type", "value=Visa");
+    $this->select("credit_card_type", "label=Visa");
+    $this->type("credit_card_number", "4111111111111111");
+    $this->type("cvv2", "000");
+    $this->select("credit_card_exp_date[M]", "value=1");
+    $this->select("credit_card_exp_date[Y]", "value=2020");
+
+    $this->clickLink("_qf_Main_upload-bottom", "_qf_Confirm_next-bottom");
+    $this->assertTrue($this->isTextPresent("I want to contribute this amount every month."));
+    $this->click("_qf_Confirm_next-bottom");
+    $this->waitForPageToLoad($this->getTimeoutMsec());
+
+    $expectedParams = array(
+      'Pending' => array(
+        'total_amount' => 30.00),
+      'Completed' => array(
+        'total_amount' => 100.00,
+      ),
+    );
+
+    //Assert that additional contribution and auto-renewal membrship
+    $membership = $this->webtest_civicrm_api("Membership", "get", array('membership_type_id' => $membershipTypeId));
+    $this->assertEquals($membership['count'], 1);
+    $membershipId = $membership['id'];
+    $this->assertEquals($membership['values'][$membershipId]['membership_name'], $membershipTypeTitle);
+    $this->assertEquals($membership['values'][$membershipId]['status_id'], 1);
+    $this->assertEquals($membership['values'][$membershipId]['source'], "Online Contribution: $contributionTitle");
+
+    $results = $this->webtest_civicrm_api("Contribution", "get", array('source' => array('LIKE' => "%$contributionTitle%")));
+    foreach ($results['values'] as $value) {
+      $status = $value['contribution_status'];
+      $this->assertEquals($value['total_amount'], $expectedParams[$status]['total_amount']);
+      if ($status == 'Pending') {
+        $recurringContributionId = $value['contribution_recur_id'];
+        $recurringContribution = $this->webtest_civicrm_api("ContributionRecur", "get", array('id' => $recurringContributionId));
+        $this->assertEquals($recurringContribution['count'], 1);
+        $this->assertEquals($recurringContribution['values'][$recurringContributionId]['frequency_unit'], 'month');
+        $this->assertEquals($recurringContribution['values'][$recurringContributionId]['frequency_interval'], 1);
+      }
+      $this->webtest_civicrm_api("Contribution", "delete", array('id' => $value['contribution_id']));
     }
   }
 

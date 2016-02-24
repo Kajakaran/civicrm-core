@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,14 +25,13 @@
  +--------------------------------------------------------------------+
  */
 
-
-require_once 'CiviTest/CiviUnitTestCase.php';
 require_once 'CiviTest/Contact.php';
 
 /**
  * Test class for CRM_Contact_BAO_GroupContact BAO
  *
  * @package   CiviCRM
+ * @group headless
  */
 class CRM_Contact_BAO_GroupContactTest extends CiviUnitTestCase {
 
@@ -46,13 +45,14 @@ class CRM_Contact_BAO_GroupContactTest extends CiviUnitTestCase {
 
   /**
    * Tears down the fixture, for example, closes a network connection.
+   *
    * This method is called after a test is executed.
    */
   protected function tearDown() {
   }
 
   /**
-   * Test case for add( )
+   * Test case for add( ).
    */
   public function testAdd() {
 
@@ -134,7 +134,7 @@ class CRM_Contact_BAO_GroupContactTest extends CiviUnitTestCase {
 
     // Check if searching by parent group  returns both parent and child group contacts
     $searchParams = array(
-      'group' => array($parentGroup->id => 1),
+      'group' => $parentGroup->id,
       'version' => 3,
     );
     $result = civicrm_api('contact', 'get', $searchParams);
@@ -148,7 +148,7 @@ class CRM_Contact_BAO_GroupContactTest extends CiviUnitTestCase {
 
     // Check if searching by child group returns just child group contacts
     $searchParams = array(
-      'group' => array($childGroup->id => 1),
+      'group' => $childGroup->id,
       'version' => 3,
     );
     $result = civicrm_api('contact', 'get', $searchParams);

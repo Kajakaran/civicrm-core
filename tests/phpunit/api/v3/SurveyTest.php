@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,17 +25,12 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
-
 /**
  *  Test APIv3 civicrm_survey_* functions
  *
  * @package CiviCRM_APIv3
  * @subpackage API_Campaign
  */
-
-require_once 'CiviTest/CiviUnitTestCase.php';
 
 /**
  * All API should contain at minimum a success test for each
@@ -47,6 +42,7 @@ require_once 'CiviTest/CiviUnitTestCase.php';
  *
  * @author eileen
  *
+ * @group headless
  */
 class api_v3_SurveyTest extends CiviUnitTestCase {
   protected $params;
@@ -88,8 +84,8 @@ class api_v3_SurveyTest extends CiviUnitTestCase {
   public function testGetSurvey() {
     $this->createTestEntity();
     $result = $this->callAPIAndDocument('survey', 'get', $this->params, __FUNCTION__, __FILE__);
-    $this->assertEquals(1, $result['count'], 'In line ' . __LINE__);
-    $this->assertNotNull($result['values'][$result['id']]['id'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['count']);
+    $this->assertNotNull($result['values'][$result['id']]['id']);
   }
 
   /**
@@ -99,7 +95,7 @@ class api_v3_SurveyTest extends CiviUnitTestCase {
     $entity = $this->createTestEntity();
     $result = $this->callAPIAndDocument('survey', 'delete', array('id' => $entity['id']), __FUNCTION__, __FILE__);
     $checkDeleted = $this->callAPISuccess($this->entity, 'get', array());
-    $this->assertEquals(0, $checkDeleted['count'], 'In line ' . __LINE__);
+    $this->assertEquals(0, $checkDeleted['count']);
   }
 
   /**
@@ -118,7 +114,7 @@ class api_v3_SurveyTest extends CiviUnitTestCase {
     );
     $result = $this->callAPISuccess('survey', 'create', $this->params);
     $result = $this->callAPIAndDocument('survey', 'get', $params, __FUNCTION__, __FILE__, $description, $subfile);
-    $this->assertEquals(0, $this->callAPISuccess('survey', 'getcount', array()), 'In line ' . __LINE__);
+    $this->assertEquals(0, $this->callAPISuccess('survey', 'getcount', array()));
   }
 
 }

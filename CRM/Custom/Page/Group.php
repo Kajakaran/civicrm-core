@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -57,7 +57,7 @@ class CRM_Custom_Page_Group extends CRM_Core_Page {
    * @return array
    *   array of action links that we need to display for the browse screen
    */
-  public function &actionLinks() {
+  public static function &actionLinks() {
     // check if variable _actionsLinks is populated
     if (!isset(self::$_actionLinks)) {
       self::$_actionLinks = array(
@@ -206,11 +206,14 @@ class CRM_Custom_Page_Group extends CRM_Core_Page {
     $dao->orderBy('weight, title');
     $dao->find();
 
+    $customGroupExtends = CRM_Core_SelectValues::customGroupExtends();
+    $customGroupStyle = CRM_Core_SelectValues::customGroupStyle();
     while ($dao->fetch()) {
-      $customGroup[$dao->id] = array();
-      CRM_Core_DAO::storeValues($dao, $customGroup[$dao->id]);
+      $id = $dao->id;
+      $customGroup[$id] = array();
+      CRM_Core_DAO::storeValues($dao, $customGroup[$id]);
       // form all action links
-      $action = array_sum(array_keys($this->actionLinks()));
+      $action = array_sum(array_keys(self::actionLinks()));
 
       // update enable/disable links depending on custom_group properties.
       if ($dao->is_active) {
@@ -219,22 +222,19 @@ class CRM_Custom_Page_Group extends CRM_Core_Page {
       else {
         $action -= CRM_Core_Action::DISABLE;
       }
-      $customGroup[$dao->id]['order'] = $customGroup[$dao->id]['weight'];
-      $customGroup[$dao->id]['action'] = CRM_Core_Action::formLink(self::actionLinks(), $action,
-        array('id' => $dao->id),
+      $customGroup[$id]['order'] = $customGroup[$id]['weight'];
+      $customGroup[$id]['action'] = CRM_Core_Action::formLink(self::actionLinks(), $action,
+        array('id' => $id),
         ts('more'),
         FALSE,
         'customGroup.row.actions',
         'CustomGroup',
-        $dao->id
+        $id
       );
-    }
-
-    $customGroupExtends = CRM_Core_SelectValues::customGroupExtends();
-    $customGroupStyle = CRM_Core_SelectValues::customGroupStyle();
-    foreach ($customGroup as $key => $array) {
-      $customGroup[$key]['style_display'] = $customGroupStyle[$customGroup[$key]['style']];
-      $customGroup[$key]['extends_display'] = $customGroupExtends[$customGroup[$key]['extends']];
+      if (!empty($customGroup[$id]['style'])) {
+        $customGroup[$id]['style_display'] = $customGroupStyle[$customGroup[$id]['style']];
+      }
+      $customGroup[$id]['extends_display'] = $customGroupExtends[$customGroup[$id]['extends']];
     }
 
     //fix for Displaying subTypes

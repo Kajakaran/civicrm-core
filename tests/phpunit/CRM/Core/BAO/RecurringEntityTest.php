@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,11 +25,9 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-require_once 'CRM/Core/BAO/RecurringEntity.php';
-
 /**
  * Class CRM_Core_BAO_RecurringEntityTest
+ * @group headless
  */
 class CRM_Core_BAO_RecurringEntityTest extends CiviUnitTestCase {
 
@@ -91,7 +89,7 @@ class CRM_Core_BAO_RecurringEntityTest extends CiviUnitTestCase {
     // set mode to ALL, i.e any change to changing activity affects all related recurring activities
     $recursion->mode(3);
 
-    // lets change subject of initial activity that we created in begining
+    // lets change subject of initial activity that we created in beginning
     $daoActivity->find(TRUE);
     $daoActivity->subject = 'Changed Activity';
     $daoActivity->save();

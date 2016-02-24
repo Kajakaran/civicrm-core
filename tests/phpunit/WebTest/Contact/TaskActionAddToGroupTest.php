@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -52,8 +52,7 @@ class WebTest_Contact_TaskActionAddToGroupTest extends CiviSeleniumTestCase {
       $cids[] = $this->urlArg('cid');
 
       // update email of new contact
-      $this->waitForElementPresent("//ul[@id='actions']/li/a/span[text()='Edit']");
-      $this->click("//ul[@id='actions']/li/a/span[text()='Edit']");
+      $this->click("xpath=//ul[@id='actions']/li[2]/a");
       $this->waitForPageToLoad($this->getTimeoutMsec());
       $this->type("email_1_email", $emailString . $i . 'webtest');
       $this->click("_qf_Contact_upload_view");
@@ -73,7 +72,7 @@ class WebTest_Contact_TaskActionAddToGroupTest extends CiviSeleniumTestCase {
     // Click "check all" box and act on "Add to group" action
     $this->click('toggleSelect');
     $this->waitForText("xpath=//input[@value='ts_sel']/following-sibling::label/span", '2');
-    $this->select("task", "label=Add Contacts to Group");
+    $this->select("task", "label=Group - add contacts");
     $this->waitForPageToLoad($this->getTimeoutMsec());
 
     // Select the new group and click to add
@@ -111,22 +110,23 @@ class WebTest_Contact_TaskActionAddToGroupTest extends CiviSeleniumTestCase {
 
     $this->openCiviPage('contact/search', 'reset=1');
     $this->clickLink("_qf_Basic_refresh");
-
+    $this->waitForElementPresent("xpath=//*[@id='CRM_Contact_Form_Search_Basic-rows-per-page-select']");
     $this->type("xpath=//*[@id='CRM_Contact_Form_Search_Basic-rows-per-page-select']", '25');
     $this->waitForElementPresent("toggleSelect");
     $this->click("toggleSelect");
-    $this->click("xpath=//div[@class='crm-content-block']/div/div[2]/div/span[2]/a");
+    $this->waitForAjaxContent();
     $this->waitForText("xpath=//div[@class='crm-content-block']/div/div[2]/div/span[2]/a", "Next >");
     $this->click("toggleSelect");
+    $this->waitForAjaxContent();
     $this->waitForText("xpath=//input[@value='ts_sel']/following-sibling::label/span", '50');
-    $this->select("task", "label=Add Contacts to Group");
+    $this->select("task", "label=Group - add contacts");
     $this->waitForPageToLoad($this->getTimeoutMsec());
 
     // Select the new group and click to add
+    $this->waitForElementPresent("group_id");
     $this->click("group_id");
     $this->select("group_id", "label=" . $newGroupName);
     $this->click("_qf_AddToGroup_next-bottom");
-    $this->waitForPageToLoad($this->getTimeoutMsec());
 
     // Check status messages are as expected
     $this->waitForText('crm-notification-container', "Added Contacts to {$newGroupName}");

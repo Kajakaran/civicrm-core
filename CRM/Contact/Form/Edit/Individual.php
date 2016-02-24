@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,28 +29,23 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * Auxilary class to provide support to the Contact Form class. Does this by implementing
- * a small set of static methods
+ * Auxiliary class to provide support to the Contact Form class.
  *
+ * Does this by implementing a small set of static methods.
  */
 class CRM_Contact_Form_Edit_Individual {
 
   /**
-   * This function provides the HTML form elements that are specific
-   * to the Individual Contact Type
+   * This function provides the HTML form elements that are specific to the Individual Contact Type.
    *
    * @param CRM_Core_Form $form
    *   Form object.
    * @param int $inlineEditMode
    *   ( 1 for contact summary.
    * top bar form and 2 for display name edit )
-   *
-   * @return void
    */
   public static function buildQuickForm(&$form, $inlineEditMode = NULL) {
     $form->applyFilter('__ALL__', 'trim');
@@ -60,6 +55,10 @@ class CRM_Contact_Form_Edit_Individual {
         'contact_edit_options', TRUE, NULL,
         FALSE, 'name', TRUE, 'AND v.filter = 2'
       );
+
+      // Use names instead of labels to build form.
+      $nameFields = array_keys($nameFields);
+
       // Fixme: dear god why? these come out in a format that is NOT the name of the fields.
       foreach ($nameFields as &$fix) {
         $fix = str_replace(' ', '_', strtolower($fix));
@@ -72,11 +71,7 @@ class CRM_Contact_Form_Edit_Individual {
       foreach ($nameFields as $name) {
         $props = array();
         if ($name == 'prefix_id' || $name == 'suffix_id') {
-          $options = CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', $name);
-          // Skip if we have no options available
-          if (!CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', $name)) {
-            //continue;
-          }
+          //override prefix/suffix label name as Prefix/Suffix respectively and adjust select size
           $props = array('class' => 'eight', 'placeholder' => ' ', 'label' => $name == 'prefix_id' ? ts('Prefix') : ts('Suffix'));
         }
         $form->addField($name, $props);
@@ -101,11 +96,7 @@ class CRM_Contact_Form_Edit_Individual {
     }
 
     if (!$inlineEditMode) {
-      $checkSimilar = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
-        'contact_ajax_check_similar',
-        NULL,
-        TRUE
-      );
+      $checkSimilar = Civi::settings()->get('contact_ajax_check_similar');
 
       if ($checkSimilar == NULL) {
         $checkSimilar = 0;

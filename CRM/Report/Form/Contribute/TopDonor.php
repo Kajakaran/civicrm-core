@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -35,6 +35,11 @@
 class CRM_Report_Form_Contribute_TopDonor extends CRM_Report_Form {
 
   protected $_summary = NULL;
+  protected $_customGroupExtends = array(
+    'Contact',
+    'Individual',
+    'Contribution',
+  );
 
   public $_drilldownReport = array('contribute/detail' => 'Link to Detail Report');
 
@@ -47,14 +52,11 @@ class CRM_Report_Form_Contribute_TopDonor extends CRM_Report_Form {
   /**
    */
   public function __construct() {
+    $this->_autoIncludeIndexedFieldsAsOrderBys = 1;
     $this->_columns = array(
       'civicrm_contact' => array(
         'dao' => 'CRM_Contact_DAO_Contact',
         'fields' => array(
-          'id' => array(
-            'no_display' => TRUE,
-            'required' => TRUE,
-          ),
           'display_name' => array(
             'title' => ts('Contact Name'),
             'required' => TRUE,
@@ -63,8 +65,25 @@ class CRM_Report_Form_Contribute_TopDonor extends CRM_Report_Form {
           'first_name' => array(
             'title' => ts('First Name'),
           ),
+          'middle_name' => array(
+            'title' => ts('Middle Name'),
+          ),
           'last_name' => array(
             'title' => ts('Last Name'),
+          ),
+          'id' => array(
+            'no_display' => TRUE,
+            'required' => TRUE,
+          ),
+          'gender_id' => array(
+            'title' => ts('Gender'),
+          ),
+          'birth_date' => array(
+            'title' => ts('Birth Date'),
+          ),
+          'age' => array(
+            'title' => ts('Age'),
+            'dbAlias' => 'TIMESTAMPDIFF(YEAR, contact_civireport.birth_date, CURDATE())',
           ),
           'contact_type' => array(
             'title' => ts('Contact Type'),
@@ -73,6 +92,29 @@ class CRM_Report_Form_Contribute_TopDonor extends CRM_Report_Form {
             'title' => ts('Contact Subtype'),
           ),
         ),
+        'filters' => array(
+          'gender_id' => array(
+            'title' => ts('Gender'),
+            'operatorType' => CRM_Report_Form::OP_MULTISELECT,
+            'options' => CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id'),
+          ),
+          'contact_type' => array(
+            'title' => ts('Contact Type'),
+          ),
+          'contact_sub_type' => array(
+            'title' => ts('Contact Subtype'),
+          ),
+        ),
+        'filters' => array(
+          'gender_id' => array(
+            'title' => ts('Gender'),
+            'operatorType' => CRM_Report_Form::OP_MULTISELECT,
+            'options' => CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id'),
+          ),
+        ),
+      ),
+      'civicrm_line_item' => array(
+        'dao' => 'CRM_Price_DAO_LineItem',
       ),
     );
     $this->_columns += $this->getAddressColumns();
@@ -95,6 +137,28 @@ class CRM_Report_Form_Contribute_TopDonor extends CRM_Report_Form {
           ),
         ),
         'filters' => array(
+          'sort_name' => array(
+            'title' => ts('Participant Name'),
+            'type' => CRM_Utils_Type::T_STRING,
+            'operator' => 'like',
+          ),
+          'id' => array(
+            'title' => ts('Contact ID'),
+            'type' => CRM_Utils_Type::T_INT,
+            'no_display' => TRUE,
+          ),
+          'birth_date' => array(
+            'title' => ts('Birth Date'),
+            'operatorType' => CRM_Report_Form::OP_DATE,
+          ),
+          'contact_type' => array(
+            'title' => ts('Contact Type'),
+            'type' => CRM_Utils_Type::T_STRING,
+          ),
+          'contact_sub_type' => array(
+            'title' => ts('Contact Subtype'),
+            'type' => CRM_Utils_Type::T_STRING,
+          ),
           'receive_date' => array(
             'default' => 'this.year',
             'operatorType' => CRM_Report_Form::OP_DATE,
@@ -114,8 +178,9 @@ class CRM_Report_Form_Contribute_TopDonor extends CRM_Report_Form {
           'financial_type_id' => array(
             'name' => 'financial_type_id',
             'title' => ts('Financial Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
-            'options' => CRM_Contribute_PseudoConstant::financialType(),
+            'options' => CRM_Financial_BAO_FinancialType::getAvailableFinancialTypes(),
           ),
           'contribution_status_id' => array(
             'title' => ts('Contribution Status'),
@@ -251,8 +316,7 @@ class CRM_Report_Form_Contribute_TopDonor extends CRM_Report_Form {
                          AND {$this->_aliases['civicrm_email']}.is_primary = 1
              LEFT  JOIN civicrm_phone  {$this->_aliases['civicrm_phone']}
                          ON {$this->_aliases['civicrm_contact']}.id = {$this->_aliases['civicrm_phone']}.contact_id AND
-                            {$this->_aliases['civicrm_phone']}.is_primary = 1
-  ";
+                            {$this->_aliases['civicrm_phone']}.is_primary = 1";
     $this->addAddressFromClause();
   }
 
@@ -323,6 +387,7 @@ class CRM_Report_Form_Contribute_TopDonor extends CRM_Report_Form {
     $this->select();
 
     $this->from();
+    $this->getPermissionedFTQuery($this);
 
     $this->where();
 
@@ -446,6 +511,24 @@ ORDER BY civicrm_contribution_total_amount_sum DESC
           $entryFound = TRUE;
         }
         $entryFound = $this->alterDisplayAddressFields($row, $rows, $rowNum, 'contribute/detail', 'List all contribution(s)') ? TRUE : $entryFound;
+
+        //handle gender
+        if (array_key_exists('civicrm_contact_gender_id', $row)) {
+          if ($value = $row['civicrm_contact_gender_id']) {
+            $gender = CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id');
+            $rows[$rowNum]['civicrm_contact_gender_id'] = $gender[$value];
+          }
+          $entryFound = TRUE;
+        }
+
+        // display birthday in the configured custom format
+        if (array_key_exists('civicrm_contact_birth_date', $row)) {
+          $birthDate = $row['civicrm_contact_birth_date'];
+          if ($birthDate) {
+            $rows[$rowNum]['civicrm_contact_birth_date'] = CRM_Utils_Date::customFormat($birthDate, '%Y%m%d');
+          }
+          $entryFound = TRUE;
+        }
 
         // skip looking further in rows, if first row itself doesn't
         // have the column we need

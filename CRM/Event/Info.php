@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -92,6 +92,10 @@ class CRM_Event_Info extends CRM_Core_Component_Info {
       'delete in CiviEvent' => array(
         ts('delete in CiviEvent'),
         ts('Delete participants and events that you can edit'),
+      ),
+      'manage event profiles' => array(
+        ts('manage event profiles'),
+        ts('Allow users to create, edit and copy event-related profile forms used for online event registration.'),
       ),
     );
 

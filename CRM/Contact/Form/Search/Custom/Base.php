@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Contact_Form_Search_Custom_Base {
 
@@ -41,7 +39,9 @@ class CRM_Contact_Form_Search_Custom_Base {
   protected $_stateID;
 
   /**
-   * @param $formValues
+   * Class constructor.
+   *
+   * @param array $formValues
    */
   public function __construct(&$formValues) {
     $this->_formValues = &$formValues;
@@ -56,7 +56,7 @@ class CRM_Contact_Form_Search_Custom_Base {
    * @param CRM_Core_Form_Search $form
    * @return array
    */
-  function buildTaskList(CRM_Core_Form_Search $form) {
+  public function buildTaskList(CRM_Core_Form_Search $form) {
     return $form->getVar('_taskList');
   }
 
@@ -241,6 +241,20 @@ class CRM_Contact_Form_Search_Custom_Base {
    */
   public function getQueryObj() {
     return NULL;
+  }
+
+  /**
+   * Set the title.
+   *
+   * @param string $title
+   */
+  public function setTitle($title) {
+    if ($title) {
+      CRM_Utils_System::setTitle($title);
+    }
+    else {
+      CRM_Utils_System::setTitle(ts('Search'));
+    }
   }
 
 }

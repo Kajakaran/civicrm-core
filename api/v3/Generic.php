@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -170,7 +170,7 @@ function civicrm_api3_generic_getfields($apiRequest, $unique = TRUE) {
   // find any supplemental information
   $hypApiRequest = array('entity' => $apiRequest['entity'], 'action' => $action, 'version' => $apiRequest['version']);
   try {
-    list ($apiProvider, $hypApiRequest) = \Civi\Core\Container::singleton()->get('civi_api_kernel')->resolve($hypApiRequest);
+    list ($apiProvider, $hypApiRequest) = \Civi::service('civi_api_kernel')->resolve($hypApiRequest);
     if (isset($hypApiRequest['function'])) {
       $helper = '_' . $hypApiRequest['function'] . '_spec';
     }
@@ -234,7 +234,15 @@ function civicrm_api3_generic_getfield($apiRequest) {
   return civicrm_api3_create_success($result, $apiRequest['params'], $apiRequest['entity'], 'getfield');
 }
 
-
+/**
+ * Get metadata for getfield action.
+ *
+ * @param array $params
+ * @param array $apiRequest
+ *
+ * @throws \CiviCRM_API3_Exception
+ * @throws \Exception
+ */
 function _civicrm_api3_generic_getfield_spec(&$params, $apiRequest) {
   $params = array(
     'name' => array(
@@ -350,6 +358,7 @@ function civicrm_api3_generic_getvalue($apiRequest) {
  * Get count of contact references.
  *
  * @param array $params
+ * @param array $apiRequest
  */
 function _civicrm_api3_generic_getrefcount_spec(&$params, $apiRequest) {
   $params['id']['api.required'] = 1;

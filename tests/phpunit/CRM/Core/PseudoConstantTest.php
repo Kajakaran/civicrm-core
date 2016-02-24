@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,10 +25,9 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
 /**
  * Tests for pseudoconstant retrieval
+ * @group headless
  */
 class CRM_Core_PseudoConstantTest extends CiviUnitTestCase {
 
@@ -88,7 +87,7 @@ class CRM_Core_PseudoConstantTest extends CiviUnitTestCase {
     $pp_name = md5(microtime());
     $api_params = array(
       'domain_id' => 1,
-      'payment_processor_type_id' => 10,
+      'payment_processor_type_id' => 'Dummy',
       'name' => $pp_name,
       'user_name' => $pp_name,
       'class_name' => 'Payment_Dummy',
@@ -422,7 +421,7 @@ class CRM_Core_PseudoConstantTest extends CiviUnitTestCase {
         ),
         array(
           'fieldName' => 'visibility',
-          'sample' => 'Public Pages',
+          'sample' => 'Expose Publicly',
         ),
       ),
       'CRM_Core_DAO_UFJoin' => array(
@@ -693,10 +692,6 @@ class CRM_Core_PseudoConstantTest extends CiviUnitTestCase {
         ),
       ),
       'CRM_Core_DAO_MappingField' => array(
-        array(
-          'fieldName' => 'contact_type',
-          'sample' => 'Individual',
-        ),
         array(
           'fieldName' => 'website_type_id',
           'sample' => 'Facebook',

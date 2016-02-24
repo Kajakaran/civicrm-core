@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,16 +25,9 @@
  +--------------------------------------------------------------------+
  */
 
-
-require_once 'CiviTest/CiviUnitTestCase.php';
-require_once 'CiviTest/Contact.php';
-require_once 'CiviTest/Custom.php';
-require_once 'CiviTest/ContributionPage.php';
-require_once 'CiviTest/Membership.php';
-require_once 'CRM/Core/Controller.php';
-
 /**
  * Class CRM_Member_BAO_MembershipTest
+ * @group headless
  */
 class CRM_Member_BAO_MembershipTest extends CiviUnitTestCase {
 
@@ -421,7 +414,7 @@ class CRM_Member_BAO_MembershipTest extends CiviUnitTestCase {
 
   /**
    * Take sort name of contact during
-   * batch update member via profile
+   * Update multiple memberships
    */
   public function testsortName() {
     $contactId = Contact::createIndividual();
@@ -519,14 +512,19 @@ class CRM_Member_BAO_MembershipTest extends CiviUnitTestCase {
     $config = CRM_Core_Config::singleton();
     $config->keyDisable = TRUE;
 
-    $membershipRenewal = new CRM_Core_Form();
-    $membershipRenewal->controller = new CRM_Core_Controller();
     $isTestMembership = 0;
-    $MembershipRenew = CRM_Member_BAO_Membership::renewMembershipFormWrapper(
+    list($MembershipRenew) = CRM_Member_BAO_Membership::renewMembership(
       $contactId,
       $this->_membershipTypeID,
       $isTestMembership,
-      $membershipRenewal,
+      NULL,
+      NULL,
+      NULL,
+      1,
+      FALSE,
+      NULL,
+      NULL,
+      FALSE,
       NULL,
       NULL
     );
@@ -602,7 +600,21 @@ class CRM_Member_BAO_MembershipTest extends CiviUnitTestCase {
 
     $membershipRenewal = new CRM_Core_Form();
     $membershipRenewal->controller = new CRM_Core_Controller();
-    $MembershipRenew = CRM_Member_BAO_Membership::renewMembershipFormWrapper($contactId, $this->_membershipTypeID, $isTestMembership = 0, $membershipRenewal, NULL, NULL);
+    list($MembershipRenew) = CRM_Member_BAO_Membership::renewMembership(
+      $contactId,
+      $this->_membershipTypeID,
+      FALSE,
+      $membershipRenewal,
+      NULL,
+      NULL,
+      NULL,
+      1,
+      NULL,
+      NULL,
+      NULL,
+      FALSE,
+      NULL
+    );
 
     $this->assertDBNotNull('CRM_Member_BAO_MembershipLog',
       $MembershipRenew->id,

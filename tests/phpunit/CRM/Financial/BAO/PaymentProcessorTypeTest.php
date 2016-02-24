@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -24,13 +24,10 @@
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
  */
-require_once 'CiviTest/CiviUnitTestCase.php';
-require_once 'CRM/Financial/DAO/FinancialAccount.php';
-require_once 'CRM/Financial/BAO/FinancialAccount.php';
-require_once 'CRM/Financial/BAO/FinancialTypeAccount.php';
 
 /**
  * Class CRM_Financial_BAO_PaymentProcessorTypeTest
+ * @group headless
  */
 class CRM_Financial_BAO_PaymentProcessorTypeTest extends CiviUnitTestCase {
 

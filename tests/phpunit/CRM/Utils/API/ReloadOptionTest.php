@@ -1,7 +1,5 @@
 <?php
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
 /**
  * Test that the API accepts the 'reload' option.
  *
@@ -9,6 +7,7 @@ require_once 'CiviTest/CiviUnitTestCase.php';
  * to munge the database. If the reload option is present, then the return value should reflect
  * the final SQL content (after calling hook_civicrm_post). If the reload option is missing,
  * then the return should reflect the inputted (unmodified) data.
+ * @group headless
  */
 class CRM_Utils_API_ReloadOptionTest extends CiviUnitTestCase {
 
@@ -85,6 +84,29 @@ class CRM_Utils_API_ReloadOptionTest extends CiviUnitTestCase {
     $this->assertEquals('First', $result['values'][$result['id']]['first_name']);
     $this->assertEquals('munged', $result['values'][$result['id']]['nick_name']);
     $this->assertAPISuccess($result['values'][$result['id']]['api.Email.create']);
+  }
+
+  /**
+   * When the reload option is combined with chaining, the reload should munge
+   * the chain results, even if sequential=1.
+   */
+  public function testReloadNoChainInterferenceSequential() {
+    $result = $this->callAPISuccess('contact', 'create', array(
+      'sequential' => 1,
+      'contact_type' => 'Individual',
+      'first_name' => 'First',
+      'last_name' => 'Last',
+      'nick_name' => 'Firstie',
+      'api.Email.create' => array(
+        'email' => 'test@example.com',
+      ),
+      'options' => array(
+        'reload' => 1,
+      ),
+    ));
+    $this->assertEquals('First', $result['values'][0]['first_name']);
+    $this->assertEquals('munged', $result['values'][0]['nick_name']);
+    $this->assertAPISuccess($result['values'][0]['api.Email.create']);
   }
 
   /**

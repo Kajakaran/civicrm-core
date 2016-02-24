@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,18 +29,27 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Contact_Form_Search_Custom_ZipCodeRange extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_Interface {
+  protected $_aclFrom = NULL;
+  protected $_aclWhere = NULL;
   /**
-   * @param $formValues
+   * Class constructor.
+   *
+   * @param array $formValues
    */
   public function __construct(&$formValues) {
     parent::__construct($formValues);
 
     $this->_columns = array(
-      ts('Contact ID') => 'contact_id',
+      // If possible, don't use aliases for the columns you select.
+      // You can prefix columns with table aliases, if needed.
+      //
+      // If you don't do this, selecting individual records from the
+      // custom search result won't work if your results are sorted on the
+      // aliased colums.
+      // (This is why we map Contact ID on contact_a.id, and not on contact_id).
+      ts('Contact ID') => 'contact_a.id',
       ts('Name') => 'sort_name',
       ts('Email') => 'email',
       ts('Zip') => 'postal_code',
@@ -110,11 +119,16 @@ class CRM_Contact_Form_Search_Custom_ZipCodeRange extends CRM_Contact_Form_Searc
   ) {
     if ($justIDs) {
       $selectClause = "contact_a.id as contact_id";
-      $sort = "contact_a.id";
+      // Don't change sort order when $justIDs is TRUE, see CRM-14920.
     }
     else {
+      // We select contact_a.id twice. Once as contact_a.id,
+      // because it is used to fill the prevnext_cache. And once
+      // as contact_a.id, for the patch of CRM-16587 to work when
+      // the results are sorted on contact ID.
       $selectClause = "
 contact_a.id           as contact_id ,
+contact_a.id           as id ,
 contact_a.sort_name    as sort_name  ,
 email.email            as email   ,
 address.postal_code    as postal_code
@@ -130,13 +144,15 @@ address.postal_code    as postal_code
    * @return string
    */
   public function from() {
-    return "
+    $this->buildACLClause('contact_a');
+    $from = "
 FROM      civicrm_contact contact_a
 LEFT JOIN civicrm_address address ON ( address.contact_id       = contact_a.id AND
                                        address.is_primary       = 1 )
 LEFT JOIN civicrm_email   email   ON ( email.contact_id = contact_a.id AND
-                                       email.is_primary = 1 )
+                                       email.is_primary = 1 ) {$this->_aclFrom}
 ";
+    return $from;
   }
 
   /**
@@ -168,14 +184,10 @@ LEFT JOIN civicrm_email   email   ON ( email.contact_id = contact_a.id AND
       2 => array(trim($high), 'Integer'),
     );
 
+    if ($this->_aclWhere) {
+      $where .= " AND {$this->_aclWhere} ";
+    }
     return $this->whereClause($where, $params);
-  }
-
-  /**
-   * @return array
-   */
-  public function setDefaultValues() {
-    return array();
   }
 
   /**
@@ -195,6 +207,13 @@ LEFT JOIN civicrm_email   email   ON ( email.contact_id = contact_a.id AND
     else {
       CRM_Utils_System::setTitle(ts('Search'));
     }
+  }
+
+  /**
+   * @param string $tableAlias
+   */
+  public function buildACLClause($tableAlias = 'contact') {
+    list($this->_aclFrom, $this->_aclWhere) = CRM_Contact_BAO_Contact_Permission::cacheClause($tableAlias);
   }
 
 }

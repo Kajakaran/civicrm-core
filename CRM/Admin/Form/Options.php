@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,13 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * This class generates form components for Options
- *
+ * This class generates form components for Options.
  */
 class CRM_Admin_Form_Options extends CRM_Admin_Form {
 
@@ -55,8 +52,6 @@ class CRM_Admin_Form_Options extends CRM_Admin_Form {
 
   /**
    * Pre-process
-   *
-   * @return void
    */
   public function preProcess() {
     parent::preProcess();
@@ -115,8 +110,6 @@ class CRM_Admin_Form_Options extends CRM_Admin_Form {
 
   /**
    * Set default values for the form.
-   *
-   * @return void
    */
   public function setDefaultValues() {
     $defaults = parent::setDefaultValues();
@@ -146,8 +139,6 @@ class CRM_Admin_Form_Options extends CRM_Admin_Form {
 
   /**
    * Build the form object.
-   *
-   * @return void
    */
   public function buildQuickForm() {
     parent::buildQuickForm();
@@ -171,12 +162,14 @@ class CRM_Admin_Form_Options extends CRM_Admin_Form {
       TRUE
     );
 
-    $this->add('text',
-      'value',
-      ts('Value'),
-      CRM_Core_DAO::getAttribute('CRM_Core_DAO_OptionValue', 'value'),
-      TRUE
-    );
+    if ($this->_gName != 'activity_type') {
+      $this->add('text',
+        'value',
+        ts('Value'),
+        CRM_Core_DAO::getAttribute('CRM_Core_DAO_OptionValue', 'value'),
+        TRUE
+      );
+    }
 
     if (!in_array($this->_gName, array(
         'email_greeting',
@@ -238,7 +231,7 @@ class CRM_Admin_Form_Options extends CRM_Admin_Form {
     }
     else {
       // Hard-coding attributes here since description is still stored as varchar and not text in the schema. dgg
-      $this->addWysiwyg('description',
+      $this->add('wysiwyg', 'description',
         ts('Description'),
         array('rows' => 4, 'cols' => 80),
         $required
@@ -388,9 +381,6 @@ class CRM_Admin_Form_Options extends CRM_Admin_Form {
 
   /**
    * Process the form submission.
-   *
-   *
-   * @return void
    */
   public function postProcess() {
     if ($this->_action & CRM_Core_Action::DELETE) {

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -87,13 +87,13 @@ class WebTest_Profile_ProfileGroupSubscriptionTest extends CiviSeleniumTestCase 
     //click on save
     $this->click('_qf_Field_next_new-top');
     $this->waitForText('crm-notification-container', "Your CiviCRM Profile Field 'Email' has been saved to '$profileTitle'.");
-    $this->waitForText('crm-notification-container', 'You can add another profile field.');
 
     //Add email field to profile
     $this->click('field_name[0]');
     $this->select('field_name[0]', 'value=Contact');
     $this->click("//option[@value='Contact']");
 
+    $this->waitForElementPresent("field_name[1]");
     $this->select('field_name[1]', 'value=group');
     $this->click("//option[@value='group']");
 

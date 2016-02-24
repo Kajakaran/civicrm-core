@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,14 +25,12 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
-
 /**
  *  Test APIv3 civicrm_report_instance_* functions
  *
  * @package CiviCRM_APIv3
  * @subpackage API_Report
+ * @group headless
  */
 class api_v3_ReportTemplateTest extends CiviUnitTestCase {
   protected $_apiversion = 3;
@@ -51,10 +49,10 @@ class api_v3_ReportTemplateTest extends CiviUnitTestCase {
       'component' => 'CiviCase',
     ));
     $this->assertAPISuccess($result);
-    $this->assertEquals(1, $result['count'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['count']);
     $entityId = $result['id'];
-    $this->assertTrue(is_numeric($entityId), 'In line ' . __LINE__);
-    $this->assertEquals(7, $result['values'][$entityId]['component_id'], 'In line ' . __LINE__);
+    $this->assertTrue(is_numeric($entityId));
+    $this->assertEquals(7, $result['values'][$entityId]['component_id']);
     $this->assertDBQuery(1, 'SELECT count(*) FROM civicrm_option_value
       WHERE name = "CRM_Report_Form_Examplez"
       AND option_group_id IN (SELECT id from civicrm_option_group WHERE name = "report_template") ');
@@ -67,7 +65,7 @@ class api_v3_ReportTemplateTest extends CiviUnitTestCase {
       'component' => '',
     ));
     $this->assertAPISuccess($result);
-    $this->assertEquals(1, $result['count'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['count']);
     $this->assertDBQuery(1, 'SELECT count(*) FROM civicrm_option_value
       WHERE name = "CRM_Report_Form_Examplez"
       AND option_group_id IN (SELECT id from civicrm_option_group WHERE name = "report_template") ');
@@ -81,7 +79,7 @@ class api_v3_ReportTemplateTest extends CiviUnitTestCase {
       'is_active' => 0,
     ));
     $this->assertAPISuccess($result);
-    $this->assertEquals(1, $result['count'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['count']);
     $this->assertDBQuery(1, 'SELECT count(*) FROM civicrm_option_value
       WHERE name = "CRM_Report_Form_Examplez"
       AND option_group_id IN (SELECT id from civicrm_option_group WHERE name = "report_template") ');
@@ -94,7 +92,7 @@ class api_v3_ReportTemplateTest extends CiviUnitTestCase {
       'is_active' => 1,
     ));
     $this->assertAPISuccess($result);
-    $this->assertEquals(1, $result['count'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['count']);
     $this->assertDBQuery(1, 'SELECT count(*) FROM civicrm_option_value
       WHERE name = "CRM_Report_Form_Examplez"
       AND option_group_id IN (SELECT id from civicrm_option_group WHERE name = "report_template") ');
@@ -105,7 +103,7 @@ class api_v3_ReportTemplateTest extends CiviUnitTestCase {
       'id' => $entityId,
     ));
     $this->assertAPISuccess($result);
-    $this->assertEquals(1, $result['count'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['count']);
     $this->assertDBQuery(0, 'SELECT count(*) FROM civicrm_option_value
       WHERE name = "CRM_Report_Form_Examplez"
       ');
@@ -184,19 +182,14 @@ class api_v3_ReportTemplateTest extends CiviUnitTestCase {
   public static function getReportTemplates() {
     $reportsToSkip = array(
       'activity' => 'does not respect function signature on from clause',
-      'walklist' => 'Notice: Undefined index: type in CRM_Report_Form_Walklist_Walklist line 155.(suspect the select function should be removed in favour of the parent (state province field) also, type should be added to state province & others? & potentially getAddressColumns fn should be used per other reports',
-      'contribute/repeat' => 'Reports with important functionality in postProcess are not callable via the api. For variable setting recommend beginPostProcessCommon, for temp table creation recommend From fn',
       'contribute/topDonor' => 'construction of query in postProcess makes inaccessible ',
-      'contribute/sybunt' => 'e notice - (ui gives fatal error at civicrm/report/contribute/sybunt&reset=1&force=1 e-notice is on yid_valueContribute/Sybunt.php(214) because at the force url "yid_relative" not "yid_value" is defined',
-      'contribute/lybunt' => 'same as sybunt - fatals on force url & test identifies why',
       'event/income' => 'I do no understand why but error is Call to undefined method CRM_Report_Form_Event_Income::from() in CRM/Report/Form.php on line 2120',
-      'contact/relationship' => '(see contribute/repeat), property declaration issue, Undefined property: CRM_Report_Form_Contact_Relationship::$relationType in /Contact/Relationship.php(486):',
       'logging/contact/summary' => '(likely to be test related) probably logging off Undefined index: Form/Contact/LoggingSummary.php(231): PHP',
       'logging/contact/detail' => '(likely to be test related) probably logging off  DB Error: no such table',
       'logging/contribute/summary' => '(likely to be test related) probably logging off DB Error: no such table',
       'logging/contribute/detail' => '(likely to be test related) probably logging off DB Error: no such table',
-      'survey/detail' => '(likely to be test related)  Undefined index: CiviCampaign civicrm CRM/Core/Component.php(196)',
       'contribute/history' => 'Declaration of CRM_Report_Form_Contribute_History::buildRows() should be compatible with CRM_Report_Form::buildRows($sql, &$rows)',
+      'activitySummary' => 'We use temp tables for the main query generation and name are dynamic. These names are not available in stats() when called directly.',
     );
 
     $reports = civicrm_api3('report_template', 'get', array('return' => 'value', 'options' => array('limit' => 500)));
@@ -210,6 +203,74 @@ class api_v3_ReportTemplateTest extends CiviUnitTestCase {
     }
 
     return $reportTemplates;
+  }
+
+  /**
+   * Test Lybunt report to check basic inclusion of a contact who gave in the year before the chosen year.
+   */
+  public function testLybuntReportWithData() {
+    $inInd = $this->individualCreate();
+    $outInd = $this->individualCreate();
+    $this->contributionCreate(array('contact_id' => $inInd, 'receive_date' => '2014-03-01'));
+    $this->contributionCreate(array('contact_id' => $outInd, 'receive_date' => '2015-03-01', 'trxn_id' => NULL, 'invoice_id' => NULL));
+    $rows = $this->callAPISuccess('report_template', 'getrows', array(
+      'report_id' => 'contribute/lybunt',
+      'yid_value' => 2015,
+      'yid_op' => 'calendar',
+      'options' => array('metadata' => array('sql')),
+    ));
+    $this->assertEquals(1, $rows['count'], "Report failed - the sql used to generate the results was " . print_r($rows['metadata']['sql'], TRUE));
+  }
+
+  /**
+   * Test Lybunt report to check basic inclusion of a contact who gave in the year before the chosen year.
+   */
+  public function testLybuntReportWithFYData() {
+    $inInd = $this->individualCreate();
+    $outInd = $this->individualCreate();
+    $this->contributionCreate(array('contact_id' => $inInd, 'receive_date' => '2014-10-01'));
+    $this->contributionCreate(array('contact_id' => $outInd, 'receive_date' => '2015-03-01', 'trxn_id' => NULL, 'invoice_id' => NULL));
+    $this->callAPISuccess('Setting', 'create', array('fiscalYearStart' => array('M' => 7, 'd' => 1)));
+    $rows = $this->callAPISuccess('report_template', 'getrows', array(
+      'report_id' => 'contribute/lybunt',
+      'yid_value' => 2015,
+      'yid_op' => 'fiscal',
+      'options' => array('metadata' => array('sql')),
+      'order_bys' => array(
+        array(
+          'column' => 'first_name',
+          'order' => 'ASC',
+        ),
+      ),
+    ));
+
+    $this->assertEquals(2, $rows['count'], "Report failed - the sql used to generate the results was " . print_r($rows['metadata']['sql'], TRUE));
+  }
+
+  /**
+   * Test Lybunt report to check basic inclusion of a contact who gave in the year before the chosen year.
+   */
+  public function testLybuntReportWithFYDataOrderByLastYearAmount() {
+    $inInd = $this->individualCreate();
+    $outInd = $this->individualCreate();
+    $this->contributionCreate(array('contact_id' => $inInd, 'receive_date' => '2014-10-01'));
+    $this->contributionCreate(array('contact_id' => $outInd, 'receive_date' => '2015-03-01', 'trxn_id' => NULL, 'invoice_id' => NULL));
+    $this->callAPISuccess('Setting', 'create', array('fiscalYearStart' => array('M' => 7, 'd' => 1)));
+    $rows = $this->callAPISuccess('report_template', 'getrows', array(
+      'report_id' => 'contribute/lybunt',
+      'yid_value' => 2015,
+      'yid_op' => 'fiscal',
+      'options' => array('metadata' => array('sql')),
+      'fields' => array('first_name'),
+      'order_bys' => array(
+        array(
+          'column' => 'last_year_total_amount',
+          'order' => 'ASC',
+        ),
+      ),
+    ));
+
+    $this->assertEquals(2, $rows['count'], "Report failed - the sql used to generate the results was " . print_r($rows['metadata']['sql'], TRUE));
   }
 
 }

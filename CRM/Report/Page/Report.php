@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,19 +29,15 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * Page for invoking report templates
+ * Page for invoking report templates.
  */
 class CRM_Report_Page_Report extends CRM_Core_Page {
 
   /**
    * Run this page (figure out the action needed and perform it).
-   *
-   * @return void
    */
   public function run() {
     if (!CRM_Core_Permission::check('administer Reports')) {
@@ -51,7 +47,7 @@ class CRM_Report_Page_Report extends CRM_Core_Page {
     $optionVal = CRM_Report_Utils_Report::getValueFromUrl();
 
     $templateInfo = CRM_Core_OptionGroup::getRowValues('report_template', "{$optionVal}", 'value',
-      'String', FALSE
+      'String', FALSE, TRUE
     );
 
     $extKey = strpos(CRM_Utils_Array::value('name', $templateInfo), '.');
@@ -65,7 +61,7 @@ class CRM_Report_Page_Report extends CRM_Core_Page {
     }
 
     if (strstr(CRM_Utils_Array::value('name', $templateInfo), '_Form') || !is_null($reportClass)) {
-      CRM_Utils_System::setTitle($templateInfo['label'] . ' - Template');
+      CRM_Utils_System::setTitle(ts('%1 - Template', array(1 => $templateInfo['label'])));
       $this->assign('reportTitle', $templateInfo['label']);
 
       $session = CRM_Core_Session::singleton();

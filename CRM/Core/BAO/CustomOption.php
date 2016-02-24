@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -79,92 +79,105 @@ class CRM_Core_BAO_CustomOption {
       return $options;
     }
 
-    $field = CRM_Core_BAO_CustomField::getFieldObject($fieldID);
+    $optionValues = CRM_Core_PseudoConstant::get('CRM_Core_BAO_CustomField', 'custom_' . $fieldID, array(), $inactiveNeeded ? 'get' : 'create');
 
-    // get the option group id
-    $optionGroupID = $field->option_group_id;
-    if (!$optionGroupID) {
-      return $options;
+    foreach ($optionValues as $value => $label) {
+      $options[] = array(
+        'label' => $label,
+        'value' => $value,
+      );
     }
-
-    $optionValues = CRM_Core_BAO_OptionValue::getOptionValuesArray($optionGroupID);
-
-    foreach ($optionValues as $id => $value) {
-      if (!$inactiveNeeded && empty($value['is_active'])) {
-        continue;
-      }
-
-      $options[$id] = array();
-      $options[$id]['id'] = $id;
-      $options[$id]['label'] = $value['label'];
-      $options[$id]['value'] = $value['value'];
-    }
-
-    CRM_Utils_Hook::customFieldOptions($fieldID, $options, TRUE);
 
     return $options;
   }
 
   /**
-   * Returns the option label for a custom field with a specific value. Handles all
-   * custom field data and html types
+   * Wrapper for ajax option selector.
    *
-   * @param int $fieldId
-   *   the custom field ID.
-   * @pram  $value    string the value (typically from the DB) of this custom field
-   * @param $value
-   * @param string $htmlType
-   *   the html type of the field (optional).
-   * @param string $dataType
-   *   the data type of the field (optional).
+   * @param array $params
+   *   Associated array for params record id.
    *
-   * @return string
-   *   the label to display for this custom field
+   * @return array
+   *   associated array of option list
+   *   -rp = rowcount
+   *   -page= offset
    */
-  public static function getOptionLabel($fieldId, $value, $htmlType = NULL, $dataType = NULL) {
-    if (!$fieldId) {
-      return NULL;
-    }
+  static public function getOptionListSelector(&$params) {
+    $options = array();
 
-    if (!$htmlType || !$dataType) {
-      $sql = "
-SELECT html_type, data_type
-FROM   civicrm_custom_field
-WHERE  id = %1
-";
-      $params = array(1 => array($fieldId, 'Integer'));
-      $dao = CRM_Core_DAO::executeQuery($sql, $params);
-      if ($dao->fetch()) {
-        $htmlType = $dao->html_type;
-        $dataType = $dao->data_type;
+    $field = CRM_Core_BAO_CustomField::getFieldObject($params['fid']);
+    $defVal = CRM_Utils_Array::explodePadded($field->default_value);
+
+    // format the params
+    $params['offset'] = ($params['page'] - 1) * $params['rp'];
+    $params['rowCount'] = $params['rp'];
+
+    if (!$field->option_group_id) {
+      return $options;
+    }
+    $queryParams = array(1 => array($field->option_group_id, 'Integer'));
+    $total = "SELECT COUNT(*) FROM civicrm_option_value WHERE option_group_id = %1";
+    $params['total'] = CRM_Core_DAO::singleValueQuery($total, $queryParams);
+
+    $limit = " LIMIT {$params['offset']}, {$params['rowCount']} ";
+    $orderBy = ' ORDER BY options.weight asc';
+
+    $query = "SELECT * FROM civicrm_option_value as options WHERE option_group_id = %1 {$orderBy} {$limit}";
+    $dao = CRM_Core_DAO::executeQuery($query, $queryParams);
+    $links = CRM_Custom_Page_Option::actionLinks();
+
+    $fields = array('id', 'label', 'value');
+    $config = CRM_Core_Config::singleton();
+    while ($dao->fetch()) {
+      $options[$dao->id] = array();
+      foreach ($fields as $k) {
+        $options[$dao->id][$k] = $dao->$k;
+      }
+      $action = array_sum(array_keys($links));
+      $class = 'crm-entity';
+      // update enable/disable links depending on custom_field properties.
+      if ($dao->is_active) {
+        $action -= CRM_Core_Action::ENABLE;
       }
       else {
-        CRM_Core_Error::fatal();
+        $class .= ' disabled';
+        $action -= CRM_Core_Action::DISABLE;
       }
-    }
-
-    $options = NULL;
-    switch ($htmlType) {
-      case 'CheckBox':
-      case 'Multi-Select':
-      case 'AdvMulti-Select':
-      case 'Select':
-      case 'Radio':
-      case 'Autocomplete-Select':
-        if (!in_array($dataType, array(
-          'Boolean',
-          'ContactReference',
-        ))
-        ) {
-          $options = self::valuesByID($fieldId);
+      if (in_array($field->html_type, array('CheckBox', 'AdvMulti-Select', 'Multi-Select'))) {
+        if (in_array($dao->value, $defVal)) {
+          $options[$dao->id]['is_default'] = '<img src="' . $config->resourceBase . 'i/check.gif" />';
         }
+        else {
+          $options[$dao->id]['is_default'] = '';
+        }
+      }
+      else {
+        if ($field->default_value == $dao->value) {
+          $options[$dao->id]['is_default'] = '<img src="' . $config->resourceBase . 'i/check.gif" />';
+        }
+        else {
+          $options[$dao->id]['is_default'] = '';
+        }
+      }
+
+      $options[$dao->id]['class'] = $dao->id . ',' . $class;
+      $options[$dao->id]['is_active'] = empty($dao->is_active) ? ts('No') : ts('Yes');
+      $options[$dao->id]['links'] = CRM_Core_Action::formLink($links,
+          $action,
+          array(
+            'id' => $dao->id,
+            'fid' => $params['fid'],
+            'gid' => $params['gid'],
+          ),
+          ts('more'),
+          FALSE,
+          'customOption.row.actions',
+          'customOption',
+          $dao->id
+        );
     }
 
-    return CRM_Core_BAO_CustomField::getDisplayValueCommon($value,
-      $options,
-      $htmlType,
-      $dataType
-    );
+    return $options;
   }
 
   /**
@@ -288,24 +301,46 @@ SET    {$dao->columnName} = REPLACE( {$dao->columnName}, %1, %2 )";
   }
 
   /**
-   * @param int $customFieldID
-   * @param int $optionGroupID
+   * When changing the value of an option this is called to update all corresponding custom data
    *
-   * @return array
+   * @param int $optionId
+   * @param string $newValue
    */
-  public static function valuesByID($customFieldID, $optionGroupID = NULL) {
-    if (!$optionGroupID) {
-      $optionGroupID = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_CustomField',
-        $customFieldID,
-        'option_group_id'
-      );
+  public static function updateValue($optionId, $newValue) {
+    $optionValue = new CRM_Core_DAO_OptionValue();
+    $optionValue->id = $optionId;
+    $optionValue->find(TRUE);
+    $oldValue = $optionValue->value;
+    if ($oldValue == $newValue) {
+      return;
     }
 
-    $options = $optionGroupID ? CRM_Core_OptionGroup::valuesByID($optionGroupID) : array();
-
-    CRM_Utils_Hook::customFieldOptions($customFieldID, $options, FALSE);
-
-    return $options;
+    $customField = new CRM_Core_DAO_CustomField();
+    $customField->option_group_id = $optionValue->option_group_id;
+    $customField->find();
+    while ($customField->fetch()) {
+      $customGroup = new CRM_Core_DAO_CustomGroup();
+      $customGroup->id = $customField->custom_group_id;
+      $customGroup->find(TRUE);
+      if (CRM_Core_BAO_CustomField::isSerialized($customField)) {
+        $params = array(
+          1 => array(CRM_Utils_Array::implodePadded($oldValue), 'String'),
+          2 => array(CRM_Utils_Array::implodePadded($newValue), 'String'),
+          3 => array('%' . CRM_Utils_Array::implodePadded($oldValue) . '%', 'String'),
+        );
+      }
+      else {
+        $params = array(
+          1 => array($oldValue, 'String'),
+          2 => array($newValue, 'String'),
+          3 => array($oldValue, 'String'),
+        );
+      }
+      $sql = "UPDATE `{$customGroup->table_name}` SET `{$customField->column_name}` = REPLACE(`{$customField->column_name}`, %1, %2) WHERE `{$customField->column_name}` LIKE %3";
+      $customGroup->free();
+      CRM_Core_DAO::executeQuery($sql, $params);
+    }
+    $customField->free();
   }
 
 }

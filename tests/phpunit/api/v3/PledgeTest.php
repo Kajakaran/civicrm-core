@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,12 +25,11 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
 /**
  * Test class for Pledge API - civicrm_pledge_*
  *
  * @package CiviCRM_APIv3
+ * @group headless
  */
 class api_v3_PledgeTest extends CiviUnitTestCase {
 
@@ -535,7 +534,7 @@ class api_v3_PledgeTest extends CiviUnitTestCase {
     $this->callAPISuccess('pledge', 'create', $this->_params);
     $result = $this->callAPISuccess('pledge', 'get', array());
     $this->assertAPISuccess($result, "This test is failing because it's acting like a contact get when no params set. Not sure the fix");
-    $this->assertEquals(1, $result['count'], 'in line ' . __LINE__);
+    $this->assertEquals(1, $result['count']);
     $pledgeID = array('id' => $result['id']);
     $this->callAPISuccess('pledge', 'delete', $pledgeID);
   }

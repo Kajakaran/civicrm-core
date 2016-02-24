@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -96,7 +96,7 @@ class WebTest_Import_AddressImportTest extends ImportCiviSeleniumTestCase {
         'address_2' => 'Add 2',
         'city' => 'Watson',
         'state' => 'NY',
-        'country' => 'United States',
+        'country' => 'UNITED STATES',
       ),
     );
     foreach ($customDataParams['rows'][0] as $key => $values) {
@@ -141,6 +141,7 @@ class WebTest_Import_AddressImportTest extends ImportCiviSeleniumTestCase {
 
     $this->waitForText('crm-notification-container', "Custom field '{$customField}' has been saved.");
     $this->assertTrue($this->isTextPresent($customField), 'Missing text: ' . $customField);
+    $this->waitForAjaxContent();
     $customFieldId = explode('&id=', $this->getAttribute("xpath=//div[@id='field_page']//table/tbody//tr/td/div[text()='$customField']/../../td[8]/span/a@href"));
     $customFieldId = $customFieldId[1];
 
@@ -156,6 +157,7 @@ class WebTest_Import_AddressImportTest extends ImportCiviSeleniumTestCase {
     $this->waitForElementPresent('newCustomField');
     $this->waitForText('crm-notification-container', "Custom field '{$customField1}' has been saved.");
     $this->assertTrue($this->isTextPresent($customField1), 'Missing text: ' . $customField1);
+    $this->waitForAjaxContent();
     $customFieldId1 = explode('&id=', $this->getAttribute("xpath=//div[@id='field_page']//table/tbody//tr/td/div[text()='$customField1']/../../td[8]/span/a@href"));
     $customFieldId1 = $customFieldId1[1];
 
@@ -171,6 +173,7 @@ class WebTest_Import_AddressImportTest extends ImportCiviSeleniumTestCase {
     $this->waitForElementPresent('newCustomField');
     $this->waitForText('crm-notification-container', "Custom field '{$customField2}' has been saved.");
     $this->assertTrue($this->isTextPresent($customField2), 'Missing text: ' . $customField2);
+    $this->waitForAjaxContent();
     $customFieldId2 = explode('&id=', $this->getAttribute("xpath=//div[@id='field_page']//table/tbody//tr/td/div[text()='$customField2']/../../td[8]/span/a@href"));
     $customFieldId2 = $customFieldId2[1];
 
@@ -222,6 +225,7 @@ class WebTest_Import_AddressImportTest extends ImportCiviSeleniumTestCase {
     $this->waitForElementPresent('newCustomField');
     $this->waitForText('crm-notification-container', "Custom field '{$customField9}' has been saved.");
     $this->assertTrue($this->isTextPresent($customField9), 'Missing text: ' . $customField9);
+    $this->waitForAjaxContent();
     $customFieldId9 = explode('&id=', $this->getAttribute("xpath=//div[@id='field_page']//table/tbody//tr/td/div[text()='$customField9']/../../td[8]/span/a@href"));
     $customFieldId9 = $customFieldId9[1];
 
@@ -238,6 +242,7 @@ class WebTest_Import_AddressImportTest extends ImportCiviSeleniumTestCase {
     $this->waitForElementPresent('newCustomField');
     $this->waitForText('crm-notification-container', "Custom field '{$customField10}' has been saved.");
     $this->assertTrue($this->isTextPresent($customField9), 'Missing text: ' . $customField9);
+    $this->waitForAjaxContent();
     $customFieldId10 = explode('&id=', $this->getAttribute("xpath=//div[@id='field_page']//table/tbody//tr/td/div[text()='$customField10']/../../td[8]/span/a@href"));
     $customFieldId10 = $customFieldId10[1];
 
@@ -281,7 +286,8 @@ class WebTest_Import_AddressImportTest extends ImportCiviSeleniumTestCase {
         $customField1 => '1',
         $customField2 => '12345',
         $customField9 => '123,456.00',
-        $customField10 => 'December 31st, 2009',
+        //CRM-16068 -- changing assertion to match the date format selected during custom field creation.
+        $customField10 => '2009-12-31',
       ),
     );
   }
@@ -306,6 +312,7 @@ class WebTest_Import_AddressImportTest extends ImportCiviSeleniumTestCase {
     $this->waitForElementPresent('newCustomField');
     $this->waitForText('crm-notification-container', "Custom field '{$customFieldName}' has been saved.");
     $this->assertTrue($this->isTextPresent($customFieldName), 'Missing text: ' . $customFieldName);
+    $this->waitForAjaxContent();
     $customFieldId = explode('&id=', $this->getAttribute("xpath=//div[@id='field_page']//table/tbody//tr/td/div[text()='$customFieldName']/../../td[8]/span/a@href"));
     $customFieldId = $customFieldId[1];
     return $customFieldId;

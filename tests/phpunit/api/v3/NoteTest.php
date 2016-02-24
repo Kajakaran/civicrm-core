@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,10 +25,9 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'tests/phpunit/CiviTest/CiviUnitTestCase.php';
-
 /**
  * Class contains api test cases for "civicrm_note"
+ * @group headless
  */
 class api_v3_NoteTest extends CiviUnitTestCase {
 
@@ -134,8 +133,8 @@ class api_v3_NoteTest extends CiviUnitTestCase {
   public function testCreate() {
 
     $result = $this->callAPIAndDocument('note', 'create', $this->_params, __FUNCTION__, __FILE__);
-    $this->assertEquals($result['values'][$result['id']]['note'], 'Hello!!! m testing Note', 'in line ' . __LINE__);
-    $this->assertEquals(date('Y-m-d', strtotime($this->_params['modified_date'])), date('Y-m-d', strtotime($result['values'][$result['id']]['modified_date'])), 'in line ' . __LINE__);
+    $this->assertEquals($result['values'][$result['id']]['note'], 'Hello!!! m testing Note');
+    $this->assertEquals(date('Y-m-d', strtotime($this->_params['modified_date'])), date('Y-m-d', strtotime($result['values'][$result['id']]['modified_date'])));
 
     $this->assertArrayHasKey('id', $result);
     $note = array(
@@ -155,10 +154,10 @@ class api_v3_NoteTest extends CiviUnitTestCase {
       'sequential' => 1,
     );
     $result = $this->callAPISuccess('Note', 'Create', $params);
-    $this->assertAPISuccess($result, 'in line ' . __LINE__);
-    $this->assertEquals($result['values'][0]['note'], "Hello!!! ' testing Note", 'in line ' . __LINE__);
-    $this->assertEquals($result['values'][0]['subject'], "With a '", 'in line ' . __LINE__);
-    $this->assertArrayHasKey('id', $result, 'in line ' . __LINE__);
+    $this->assertAPISuccess($result);
+    $this->assertEquals($result['values'][0]['note'], "Hello!!! ' testing Note");
+    $this->assertEquals($result['values'][0]['subject'], "With a '");
+    $this->assertArrayHasKey('id', $result);
 
     //CleanUP
     $note = array(
@@ -219,11 +218,11 @@ class api_v3_NoteTest extends CiviUnitTestCase {
     // Update Note.
     $this->callAPISuccess('note', 'create', $params);
     $note = $this->callAPISuccess('Note', 'Get', array());
-    $this->assertEquals($note['id'], $this->_noteID, 'in line ' . __LINE__);
-    $this->assertEquals($note['values'][$this->_noteID]['entity_id'], $this->_contactID, 'in line ' . __LINE__);
-    $this->assertEquals($note['values'][$this->_noteID]['entity_table'], 'civicrm_contact', 'in line ' . __LINE__);
-    $this->assertEquals('Hello World', $note['values'][$this->_noteID]['subject'], 'in line ' . __LINE__);
-    $this->assertEquals('Note1', $note['values'][$this->_noteID]['note'], 'in line ' . __LINE__);
+    $this->assertEquals($note['id'], $this->_noteID);
+    $this->assertEquals($note['values'][$this->_noteID]['entity_id'], $this->_contactID);
+    $this->assertEquals($note['values'][$this->_noteID]['entity_table'], 'civicrm_contact');
+    $this->assertEquals('Hello World', $note['values'][$this->_noteID]['subject']);
+    $this->assertEquals('Note1', $note['values'][$this->_noteID]['note']);
   }
 
   /**

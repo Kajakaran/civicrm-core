@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -139,9 +139,8 @@ class WebTest_Contribute_ContactContextAddTest extends CiviSeleniumTestCase {
     $this->clickLink("_qf_Contribution_upload-bottom", 'civicrm-footer', FALSE);
     // Is status message correct?
     $this->waitForText('crm-notification-container', "The contribution record has been saved");
-
-    $this->waitForElementPresent("xpath=//div[@class='view-content']/table[2]/tbody/tr/td[8]/span/a[text()='View']");
-    $viewUrl = $this->parseURL($this->getAttribute("xpath=//div[@class='view-content']/table[2]/tbody/tr/td[8]/span/a[text()='View']@href"));
+    $this->waitForElementPresent("xpath=//form[@class='CRM_Contribute_Form_Search crm-search-form']/div[2]/table[2]/tbody/tr/td[8]/span//a[text()='View']");
+    $viewUrl = $this->parseURL($this->getAttribute("xpath=//form[@class='CRM_Contribute_Form_Search crm-search-form']/div[2]/table[2]/tbody/tr/td[8]/span//a[text()='View']@href"));
     $id = $viewUrl['queryString']['id'];
     $this->assertType('numeric', $id);
 
@@ -154,7 +153,7 @@ class WebTest_Contribute_ContactContextAddTest extends CiviSeleniumTestCase {
       'From' => $firstName . " Anderson",
       'Financial Type' => 'Donation',
       'Contribution Status' => 'Completed',
-      'Paid By' => 'Check',
+      'Payment Method' => 'Check',
       'Total Amount' => '$ 100.00',
       'Non-deductible Amount' => '$ 12.50',
       'Check Number' => 'check #1041',

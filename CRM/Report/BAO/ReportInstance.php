@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Report_BAO_ReportInstance extends CRM_Report_DAO_ReportInstance {
 
@@ -68,6 +66,8 @@ class CRM_Report_BAO_ReportInstance extends CRM_Report_DAO_ReportInstance {
     if (!$instanceID || !isset($params['id'])) {
       $params['is_reserved'] = CRM_Utils_Array::value('is_reserved', $params, FALSE);
       $params['domain_id'] = CRM_Utils_Array::value('domain_id', $params, CRM_Core_Config::domainID());
+      // CRM-17256 set created_id on report creation.
+      $params['created_id'] = isset($params['created_id']) ? $params['created_id'] : CRM_Core_Session::getLoggedInContactID();
     }
 
     if ($instanceID) {
@@ -119,6 +119,7 @@ class CRM_Report_BAO_ReportInstance extends CRM_Report_DAO_ReportInstance {
 
   /**
    * Create instance.
+   *
    * takes an associative array and creates a instance object and does any related work like permissioning, adding to dashboard etc.
    *
    * This function is invoked from within the web form layer and also from the api layer
@@ -160,6 +161,12 @@ class CRM_Report_BAO_ReportInstance extends CRM_Report_DAO_ReportInstance {
       unset($params['is_navigation']);
     }
 
+    $viewMode = !empty($params['view_mode']) ? $params['view_mode'] : FALSE;
+    if ($viewMode) {
+      // Do not save to the DB - it's saved in the url.
+      unset($params['view_mode']);
+    }
+
     // add to dashboard
     $dashletParams = array();
     if (!empty($params['addToDashboard'])) {
@@ -185,7 +192,7 @@ class CRM_Report_BAO_ReportInstance extends CRM_Report_DAO_ReportInstance {
       if (empty($params['id']) && empty($params['instance_id']) && !empty($navigationParams['id'])) {
         unset($navigationParams['id']);
       }
-      $navigationParams['url'] = "civicrm/report/instance/{$instance->id}?reset=1";
+      $navigationParams['url'] = "civicrm/report/instance/{$instance->id}" . ($viewMode == 'view' ? '?reset=1&force=1' : '?reset=1&output=criteria');
       $navigation = CRM_Core_BAO_Navigation::add($navigationParams);
 
       if (!empty($navigationParams['is_active'])) {
@@ -238,8 +245,10 @@ class CRM_Report_BAO_ReportInstance extends CRM_Report_DAO_ReportInstance {
   }
 
   /**
+   * Retrieve instance.
+   *
    * @param array $params
-   * @param $defaults
+   * @param array $defaults
    *
    * @return CRM_Report_DAO_ReportInstance|null
    */

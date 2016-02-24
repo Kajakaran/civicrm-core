@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -24,22 +24,6 @@
  +--------------------------------------------------------------------+
 *}
 {* template for adding form elements for soft credit form*}
-{if $honor_block_is_active}
-  {crmRegion name="contribution-soft-credit-block"}
-    <legend>{$honor_block_title}</legend>
-    <div class="crm-section honor_block_text-section">
-      {$honor_block_text}
-    </div>
-    {if $form.soft_credit_type_id.html}
-      <div class="crm-section {$form.soft_credit_type_id.name}-section">
-        <div class="content" >
-          {$form.soft_credit_type_id.html}
-          <div class="description">{ts}Select an option to reveal honoree information fields.{/ts}</div>
-        </div>
-      </div>
-    {/if}
-  {/crmRegion}
-{else}
 <table class="form-layout-compressed crm-soft-credit-block">
   {section name='i' start=1 loop=$rowCount}
     {assign var='rowNumber' value=$smarty.section.i.index}
@@ -59,11 +43,11 @@
   {/section}
   <tr>
     <td>
-      <a href="#" class="crm-hover-button" id="addMoreSoftCredit"><span class="icon ui-icon-circle-plus"></span> {ts}another soft credit{/ts}</a>
+      <a href="#" class="crm-hover-button" id="addMoreSoftCredit"><i class="crm-i fa-plus-circle"></i> {ts}another soft credit{/ts}</a>
     </td>
   </tr>
 </table>
-{/if}
+
 {literal}
 <script type="text/javascript">
   CRM.$(function($) {
@@ -88,29 +72,6 @@
       }
       return false;
     });
-
-    // FIXME: This could be much simpler as an entityRef field but pcp doesn't have a searchable api :(
-    var pcpURL = CRM.url('civicrm/ajax/rest', 'className=CRM_Contact_Page_AJAX&fnName=getPCPList&json=1&context=contact&reset=1');
-    $('#pcp_made_through_id').crmSelect2({
-      placeholder: {/literal}'{ts escape="js"}- select -{/ts}'{literal},
-      minimumInputLength: 1,
-      ajax: {
-        url: pcpURL,
-        data: function(term) {
-          return {term: term};
-        },
-        results: function(response) {
-          return {results: response};
-        }
-      },
-      initSelection: function(el, callback) {
-        callback({id: $(el).val(), text: $('[name=pcp_made_through]', $form).val()});
-      }
-    })
-      // This is just a cheap trick to store the name in case of a formrule error
-      .on('change', function() {
-        $('[name=pcp_made_through]', $form).val($(this).select2('data').text || '');
-      });
 
     $('.crm-soft-credit-block tr span').each(function () {
       if ($(this).hasClass('crm-error')) {

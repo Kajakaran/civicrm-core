@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -120,7 +120,7 @@ class WebTest_Contribute_AddBatchesTest extends CiviSeleniumTestCase {
     $this->webtestLogin();
 
     // create a new pledge for contact
-    $contact = WebTest_Pledge_StandaloneAddTest::testStandalonePledgeAdd();
+    $contact = $this->webtestStandalonePledgeAdd();
 
     $itemCount = 2;
     $softCreditTypes = CRM_Core_OptionGroup::values("soft_credit_type", FALSE);
@@ -268,8 +268,8 @@ class WebTest_Contribute_AddBatchesTest extends CiviSeleniumTestCase {
     if ($type == "Contribution") {
       $this->openCiviPage("contribute/search", "reset=1", "contribution_date_low");
       $this->type("sort_name", "{$data['last_name']} {$data['first_name']}");
-      $this->clickLink("_qf_Search_refresh", "xpath=//div[@id='contributionSearch']//table//tbody/tr[1]/td[11]/span/a[text()='View']");
-      $this->clickLink("xpath=//div[@id='contributionSearch']//table//tbody/tr[1]/td[11]/span/a[text()='View']", "_qf_ContributionView_cancel-bottom", FALSE);
+      $this->clickLink("_qf_Search_refresh", "xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[10]/span//a[text()='View']", FALSE);
+      $this->clickLink("xpath=//table[@class='selector row-highlight']/tbody/tr[1]/td[10]/span//a[text()='View']", "_qf_ContributionView_cancel-bottom", FALSE);
       $expected = array(
         'From' => "{$data['first_name']} {$data['last_name']}",
         'Financial Type' => $data['financial_type'],

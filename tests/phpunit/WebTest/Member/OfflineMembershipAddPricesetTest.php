@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -309,13 +309,12 @@ class WebTest_Member_OfflineMembershipAddPricesetTest extends CiviSeleniumTestCa
     $joinDate = date('Y-m-d', mktime(0, 0, 0, $currentMonth, date('d'), $currentYear));
     $startDate = date('Y-m-d', mktime(0, 0, 0, $currentMonth, date('d'), $currentYear));
     $endDate = date('Y-m-d', mktime(0, 0, 0, $currentMonth, $previousDay, $endYear));
-    $configVars = new CRM_Core_Config_Variables();
     foreach (array(
                'joinDate',
                'startDate',
                'endDate',
              ) as $date) {
-      $$date = CRM_Utils_Date::customFormat($$date, $configVars->dateformatFull);
+      $$date = CRM_Utils_Date::customFormat($$date, $this->webtestGetSetting('dateformatFull'));
     }
 
     if (!$renew) {
@@ -339,13 +338,13 @@ class WebTest_Member_OfflineMembershipAddPricesetTest extends CiviSeleniumTestCa
       $this->click('_qf_Membership_upload-bottom');
     }
     else {
-      $this->click("xpath=//div[@id='memberships']/div//table/tbody//tr/td[text()='{$memTypeTitle1}']/../td[9]/span[2][text()='more']/ul/li/a[text()='Renew']");
+      $this->click("xpath=//div[@id='memberships']/div//table/tbody//tr/td[text()='{$memTypeTitle1}']/../td[9]/span[2][text()='Renew...']/ul/li/a[text()='Renew']");
       $this->waitForElementPresent('_qf_MembershipRenewal_cancel-bottom');
       $this->waitForAjaxContent();
       $this->click('_qf_MembershipRenewal_upload-bottom');
 
       $this->waitForElementPresent("xpath=//div[@id='memberships']//table/tbody/tr");
-      $this->click("xpath=//div[@id='memberships']/div//table/tbody//tr/td[text()='{$memTypeTitle2}']/../td[9]/span[2][text()='more']/ul/li/a[text()='Renew']");
+      $this->click("xpath=//div[@id='memberships']/div//table/tbody//tr/td[text()='{$memTypeTitle2}']/../td[9]/span[2][text()='Renew...']/ul/li/a[text()='Renew']");
       $this->waitForElementPresent('_qf_MembershipRenewal_cancel-bottom');
       $this->waitForAjaxContent();
       $this->click('_qf_MembershipRenewal_upload-bottom');
@@ -402,13 +401,12 @@ class WebTest_Member_OfflineMembershipAddPricesetTest extends CiviSeleniumTestCa
     $joinDate = date('Y-m-d', mktime(0, 0, 0, $currentMonth, date('d'), $currentYear));
     $startDate = date('Y-m-d', mktime(0, 0, 0, $currentMonth, date('d'), $currentYear));
     $endDate = date('Y-m-d', mktime(0, 0, 0, $currentMonth, $previousDay, $endYear));
-    $configVars = new CRM_Core_Config_Variables();
     foreach (array(
                'joinDate',
                'startDate',
                'endDate',
              ) as $date) {
-      $$date = CRM_Utils_Date::customFormat($$date, $configVars->dateformatFull);
+      $$date = CRM_Utils_Date::customFormat($$date, $this->webtestGetSetting('dateformatFull'));
     }
 
     $this->click('css=li#tab_member a');
@@ -446,8 +444,8 @@ class WebTest_Member_OfflineMembershipAddPricesetTest extends CiviSeleniumTestCa
     $this->webtestVerifyTabularData($verifyData);
 
     //check if the membership amount is correct
-    $this->waitForElementPresent("xpath=//form[@id='MembershipView']/div[2]/div/div[@class='crm-accordion-wrapper']/div/table/tbody/tr/td/span[text()='{$amount}']");
-    $this->assertTrue($this->isElementPresent("xpath=//form[@id='MembershipView']/div[2]/div/div[@class='crm-accordion-wrapper']/div/table/tbody/tr/td/span[text()='{$amount}']"));
+    $this->waitForElementPresent("xpath=//form[@id='MembershipView']/div[2]/div/div[@class='crm-accordion-wrapper']/div[2]/table/tbody/tr/td/a");
+    $this->assertElementContainsText("xpath=//form[@id='MembershipView']/div[2]/div/div[@class='crm-accordion-wrapper']/div[2]/table/tbody/tr/td/a", $amount);
     $this->click("_qf_MembershipView_cancel-bottom");
   }
 

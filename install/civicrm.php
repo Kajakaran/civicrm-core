@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -35,6 +35,13 @@
 function civicrm_setup($filesDirectory) {
   global $crmPath, $sqlPath, $pkgPath, $tplPath;
   global $compileDir;
+
+  // Setup classloader
+  // This is needed to allow CiviCRM to be installed by drush.
+  // TODO: move to civicrm.drush.inc drush_civicrm_install()
+  global $crmPath;
+  require_once $crmPath . '/CRM/Core/ClassLoader.php';
+  CRM_Core_ClassLoader::singleton()->register();
 
   $sqlPath = $crmPath . DIRECTORY_SEPARATOR . 'sql';
   $tplPath = $crmPath . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR . 'CRM' . DIRECTORY_SEPARATOR . 'common' . DIRECTORY_SEPARATOR;
@@ -82,7 +89,9 @@ function civicrm_main(&$config) {
     );
   }
   elseif ($installType == 'wordpress') {
-    civicrm_setup(WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . 'files');
+    $upload_dir = wp_upload_dir();
+    $files_dirname = $upload_dir['basedir'];
+    civicrm_setup($files_dirname);
   }
 
   $dsn = "mysql://{$config['mysql']['username']}:{$config['mysql']['password']}@{$config['mysql']['server']}/{$config['mysql']['database']}?new_link=true";
@@ -112,7 +121,7 @@ function civicrm_main(&$config) {
     $configFile = $cmsPath . DIRECTORY_SEPARATOR . 'sites' . DIRECTORY_SEPARATOR . $siteDir . DIRECTORY_SEPARATOR . 'civicrm.settings.php';
   }
   elseif ($installType == 'wordpress') {
-    $configFile = $cmsPath . DIRECTORY_SEPARATOR . 'civicrm.settings.php';
+    $configFile = $files_dirname . DIRECTORY_SEPARATOR . 'civicrm' . DIRECTORY_SEPARATOR . 'civicrm.settings.php';
   }
 
   $string = civicrm_config($config);
@@ -201,7 +210,7 @@ function civicrm_config(&$config) {
   );
 
   $params['baseURL'] = isset($config['base_url']) ? $config['base_url'] : civicrm_cms_base();
-  if ($installType == 'drupal') {
+  if ($installType == 'drupal' && defined('VERSION')) {
     if (version_compare(VERSION, '7.0-rc1') >= 0) {
       $params['cms'] = 'Drupal';
       $params['CMSdbUser'] = addslashes($config['drupal']['username']);
@@ -217,6 +226,13 @@ function civicrm_config(&$config) {
       $params['CMSdbName'] = addslashes($config['drupal']['database']);
     }
   }
+  elseif ($installType == 'drupal') {
+    $params['cms'] = $config['cms'];
+    $params['CMSdbUser'] = addslashes($config['cmsdb']['username']);
+    $params['CMSdbPass'] = addslashes($config['cmsdb']['password']);
+    $params['CMSdbHost'] = $config['cmsdb']['server'];
+    $params['CMSdbName'] = addslashes($config['cmsdb']['database']);
+  }
   else {
     $params['cms'] = 'WordPress';
     $params['CMSdbUser'] = addslashes(DB_USER);
@@ -228,7 +244,8 @@ function civicrm_config(&$config) {
     $params['crmRoot'] = addslashes($params['crmRoot']);
   }
 
-  $params['siteKey'] = md5(uniqid('', TRUE) . $params['baseURL']);
+  $params['siteKey'] = md5(rand() . mt_rand() . rand() . uniqid('', TRUE) . $params['baseURL']);
+  // Would prefer openssl_random_pseudo_bytes(), but I don't think it's universally available.
 
   $str = file_get_contents($tplPath . 'civicrm.settings.php.template');
   foreach ($params as $key => $value) {

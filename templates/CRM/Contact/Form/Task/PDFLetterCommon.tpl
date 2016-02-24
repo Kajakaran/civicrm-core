@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -92,13 +92,10 @@
  <div class="crm-accordion-body">
    <div class="helpIcon" id="helphtml">
      <input class="crm-token-selector big" data-field="html_message" />
-     {help id="id-token-html" tplFile=$tplFile isAdmin=$isAdmin editor=$editor file="CRM/Contact/Form/Task/Email.hlp"}
+     {help id="id-token-html" tplFile=$tplFile isAdmin=$isAdmin file="CRM/Contact/Form/Task/Email.hlp"}
    </div>
     <div class="clear"></div>
     <div class='html'>
-  {if $editor EQ 'textarea'}
-      <div class="help description">{ts}NOTE: If you are composing HTML-formatted messages, you may want to enable a Rich Text (WYSIWYG) editor (Administer &raquo; Customize Data & Screens &raquo; Display Preferences).{/ts}</div>
-  {/if}
   {$form.html_message.html}<br />
     </div>
 
@@ -128,6 +125,30 @@ CRM.$(function($) {
   $('#format_id', $form).on('change', function() {
     selectFormat($(this).val());
   });
+  // After the pdf downloads, the user has to manually close the dialog (which would be nice to fix)
+  // But at least we can trigger the underlying list of activities to refresh
+  $('[name=_qf_PDF_submit]', $form).click(function() {
+    var $dialog = $(this).closest('.ui-dialog-content.crm-ajax-container');
+    if ($dialog.length) {
+      $dialog.on('dialogbeforeclose', function () {
+        $(this).trigger('crmFormSuccess');
+      });
+      $dialog.dialog('option', 'buttons', [{
+        text: {/literal}"{ts escape='js'}Done{/ts}"{literal},
+        icons: {primary: 'fa-times'},
+        click: function() {$(this).dialog('close');}
+      }]);
+    }
+  });
+  $('[name^=_qf_PDF_submit]', $form).click(function() {
+    CRM.status({/literal}"{ts escape='js'}Downloading...{/ts}"{literal});
+  });
+  showSaveDetails($('input[name=saveTemplate]', $form)[0]);
+
+  function showSaveTemplate() {
+    $('#updateDetails').toggle(!!$(this).val());
+  }
+  $('[name=template]', $form).each(showSaveTemplate).change(showSaveTemplate);
 });
 
 var currentWidth;
@@ -170,28 +191,35 @@ function updateFormatLabel() {
 
 updateFormatLabel();
 
-function selectFormat( val, bind )
-{
+function fillFormatInfo( data, bind ) {
+  cj("#format_id").val( data.id );
+  cj("#paper_size").val( data.paper_size );
+  cj("#orientation").val( data.orientation );
+  cj("#metric").val( data.metric );
+  cj("#margin_top").val( data.margin_top );
+  cj("#margin_bottom").val( data.margin_bottom );
+  cj("#margin_left").val( data.margin_left );
+  cj("#margin_right").val( data.margin_right );
+  selectPaper( data.paper_size );
+  cj("#update_format").prop({checked: false}).parent().hide();
+  document.getElementById('bind_format').checked = bind;
+  showBindFormatChkBox();
+}
+
+function selectFormat( val, bind ) {
   updateFormatLabel();
-    if (!val) {
-        val = 0;
-        bind = false;
-    }
+  if (!val) {
+    val = 0;
+    bind = false;
     var dataUrl = {/literal}"{crmURL p='civicrm/ajax/pdfFormat' h=0 }"{literal};
     cj.post( dataUrl, {formatId: val}, function( data ) {
-        cj("#format_id").val( data.id );
-        cj("#paper_size").val( data.paper_size );
-        cj("#orientation").val( data.orientation );
-        cj("#metric").val( data.metric );
-        cj("#margin_top").val( data.margin_top );
-        cj("#margin_bottom").val( data.margin_bottom );
-        cj("#margin_left").val( data.margin_left );
-        cj("#margin_right").val( data.margin_right );
-        selectPaper( data.paper_size );
-        cj("#update_format").prop({checked: false}).parent().hide();
-        document.getElementById('bind_format').checked = bind;
-        showBindFormatChkBox();
-    }, 'json');
+      fillFormatInfo(data, bind);
+      }, 'json');
+  }
+  else {
+    data=JSON.parse(val);
+    fillFormatInfo(data, bind);
+  }
 }
 
 function selectPaper( val )
@@ -282,4 +310,3 @@ function showSaveDetails(chkbox)  {
 
 </script>
 {/literal}
-

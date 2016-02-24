@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -43,7 +43,7 @@
           {/if}
         {/if}
 
-        {if $mode ne 8 && $action ne 1028 && $action ne 4}
+        {if $mode ne 8 && $action ne 1028 && $action ne 4 && !$hideFieldset}
         <fieldset class="crm-profile crm-profile-id-{$field.group_id} crm-profile-name-{$field.groupName}"><legend>{$field.groupTitle}</legend>
         {/if}
 
@@ -66,7 +66,7 @@
       {elseif $n}
         {* Show explanatory text for field if not in 'view' or 'preview' modes *}
         {if $field.help_pre && $action neq 4 && $action neq 1028}
-          <div class="crm-section helprow-{$n}-section" id="helprow-{$n}">
+          <div class="crm-section helprow-{$n}-section helprow-pre" id="helprow-{$n}">
             <div class="content description">{$field.help_pre}</div>
           </div>
         {/if}
@@ -132,7 +132,14 @@
                   &nbsp;{$form.$phone_ext_field.html}
                 {/if}
               {else}
-                {if $prefix}{$form.$prefix.$n.html}{else}{$form.$n.html}{/if}
+                {if $prefix}
+                  {if $n eq 'organization_name' && !empty($form.onbehalfof_id)}
+                    {$form.onbehalfof_id.html}
+                  {/if}
+                  {$form.$prefix.$n.html}
+		{else}
+		  {$form.$n.html}
+		{/if}
               {/if}
 
             {*CRM-4564*}
@@ -147,7 +154,7 @@
         {/if}
         {* Show explanatory text for field if not in 'view' or 'preview' modes *}
         {if $field.help_post && $action neq 4 && $action neq 1028}
-          <div class="crm-section helprow-{$n}-section" id="helprow-{$n}">
+          <div class="crm-section helprow-{$n}-section helprow-post" id="helprow-{$n}">
             <div class="content description">{$field.help_post}</div>
           </div>
         {/if}
@@ -164,7 +171,7 @@
       </div>
     {/if}
 
-    {if $mode ne 8 && $action neq 1028}
+    {if $mode ne 8 && $action neq 1028 && !$hideFieldset}
     </fieldset>
     {/if}
 

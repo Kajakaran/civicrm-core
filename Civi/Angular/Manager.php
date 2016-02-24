@@ -81,6 +81,12 @@ class Manager {
         'ext' => 'civicrm',
         'js' => array('ang/crmAutosave.js'),
       );
+      $angularModules['crmCxn'] = array(
+        'ext' => 'civicrm',
+        'js' => array('ang/crmCxn.js', 'ang/crmCxn/*.js'),
+        'css' => array('ang/crmCxn.css'),
+        'partials' => array('ang/crmCxn'),
+      );
       //$angularModules['crmExample'] = array(
       //  'ext' => 'civicrm',
       //  'js' => array('ang/crmExample.js'),
@@ -95,10 +101,6 @@ class Manager {
         'ext' => 'civicrm',
         'js' => array('ang/crmUi.js'),
         'partials' => array('ang/crmUi'),
-        'settings' => array(
-          'browseUrl' => $config->userFrameworkResourceURL . 'packages/kcfinder/browse.php',
-          'uploadUrl' => $config->userFrameworkResourceURL . 'packages/kcfinder/upload.php',
-        ),
       );
       $angularModules['crmUtil'] = array(
         'ext' => 'civicrm',
@@ -113,6 +115,10 @@ class Manager {
         'ext' => 'civicrm',
         'js' => array('bower_components/angular-route/angular-route.min.js'),
       );
+      $angularModules['ngSanitize'] = array(
+        'ext' => 'civicrm',
+        'js' => array('bower_components/angular-sanitize/angular-sanitize.min.js'),
+      );
       $angularModules['ui.utils'] = array(
         'ext' => 'civicrm',
         'js' => array('bower_components/angular-ui-utils/ui-utils.min.js'),
@@ -124,6 +130,14 @@ class Manager {
       $angularModules['unsavedChanges'] = array(
         'ext' => 'civicrm',
         'js' => array('bower_components/angular-unsavedChanges/dist/unsavedChanges.min.js'),
+      );
+
+      $angularModules['statuspage'] = array(
+        'ext' => 'civicrm',
+        'js' => array('ang/crmStatusPage.js', 'ang/crmStatusPage/*.js'),
+        'css' => array('ang/crmStatusPage.css'),
+        'partials' => array('ang/crmStatusPage'),
+        'settings' => array(),
       );
 
       foreach (\CRM_Core_Component::getEnabledComponents() as $component) {

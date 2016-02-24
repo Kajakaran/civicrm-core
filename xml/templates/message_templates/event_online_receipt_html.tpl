@@ -9,9 +9,13 @@
 {capture assign=headerStyle}colspan="2" style="text-align: left; padding: 4px; border-bottom: 1px solid #999; background-color: #eee;"{/capture}
 {capture assign=labelStyle }style="padding: 4px; border-bottom: 1px solid #999; background-color: #f7f7f7;"{/capture}
 {capture assign=valueStyle }style="padding: 4px; border-bottom: 1px solid #999;"{/capture}
+{capture assign=tdfirstStyle}style="width: 180px; padding-bottom: 15px;"{/capture}
+{capture assign=tdStyle}style="width: 100px;"{/capture}
+{capture assign=participantTotal}style="margin: 0.5em 0 0.5em;padding: 0.5em;background-color: #999999;font-weight: bold;color: #FAFAFA;border-radius: 2px;"{/capture}
+
 
 <center>
- <table width="500" border="0" cellpadding="0" cellspacing="0" id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left;">
+ <table width="700" border="0" cellpadding="0" cellspacing="0" id="crm-event_receipt" style="font-family: Arial, Verdana, sans-serif; text-align: left;">
 
   <!-- BEGIN HEADER -->
   <!-- You can add table row(s) here with logo or other header elements -->
@@ -21,7 +25,7 @@
 
   <tr>
    <td>
-  <p>Dear {contact.display_name},</p>
+  <p>{contact.email_greeting},</p>
 
     {if $event.confirm_email_text AND (not $isOnWaitlist AND not $isRequireApproval)}
      <p>{$event.confirm_email_text|htmlize}</p>
@@ -52,7 +56,7 @@
   </tr>
   <tr>
    <td>
-    <table width="500" style="border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse;">
+    <table width="700" style="border: 1px solid #999; margin: 1em 0em 1em; border-collapse: collapse;">
      <tr>
       <th {$headerStyle}>
        {ts}Event Information and Location{/ts}
@@ -222,24 +226,24 @@
             </tr>
             {foreach from=$value item=line}
              <tr>
-              <td>
+              <td {$tdfirstStyle}>
               {if $line.html_type eq 'Text'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div>{$line.description|truncate:30:"..."}</div>{/if}
               </td>
-              <td>
+              <td {$tdStyle} align="middle">
                {$line.qty}
               </td>
-              <td>
+              <td {$tdStyle}>
                {$line.unit_price|crmMoney:$currency}
               </td>
               {if $dataArray}
-               <td>
+               <td {$tdStyle}>
                 {$line.unit_price*$line.qty|crmMoney}
                </td>
                {if $line.tax_rate != "" || $line.tax_amount != ""}
-                <td>
+                <td {$tdStyle}>
                  {$line.tax_rate|string_format:"%.2f"}%
                 </td>
-                <td>
+                <td {$tdStyle}>
                  {$line.tax_amount|crmMoney}
                 </td>
                {else}
@@ -247,12 +251,20 @@
                 <td></td>
                {/if}
               {/if}
-              <td>
+              <td {$tdStyle}>
                {$line.line_total+$line.tax_amount|crmMoney:$currency}
               </td>
-        {if $pricesetFieldsCount }<td>{$line.participant_count}</td> {/if}
+        {if $pricesetFieldsCount }<td {$tdStyle}>{$line.participant_count}</td> {/if}
              </tr>
             {/foreach}
+            {if $individual}
+              <tr {$participantTotal}>
+                <td colspan=3>{ts}Participant Total{/ts}</td>
+                <td  colspan=2>{$individual.$priceset.totalAmtWithTax-$individual.$priceset.totalTaxAmt|crmMoney}</td>
+                <td  colspan=1>{$individual.$priceset.totalTaxAmt|crmMoney}</td>
+                <td  colspan=2>{$individual.$priceset.totalAmtWithTax|crmMoney}</td>
+              </tr>
+            {/if}
            </table>
           </td>
          </tr>
@@ -495,8 +507,16 @@
        {/foreach}
       {/foreach}
      {/if}
-
     </table>
+    {if $event.allow_selfcancelxfer }
+     <tr>
+      <td colspan="2" {$valueStyle}>
+        {ts 1=$event.selfcancelxfer_time}You may transfer your registration to another participant or cancel your registration up to %1 hours before the event.{/ts} {if $totalAmount}{ts}Cancellations are not refundable.{/ts}{/if}<br />
+        {capture assign=selfService}{crmURL p='civicrm/event/selfsvcupdate' q="reset=1&pid=`$participant.id`&{contact.checksum}"  h=0 a=1 fe=1}{/capture}
+        <a href="{$selfService}">{ts}Click here to transfer or cancel your registration.{/ts}</a>
+      </td>
+     </tr>
+    {/if}
    </td>
   </tr>
  </table>

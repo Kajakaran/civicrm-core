@@ -23,14 +23,13 @@
 /**
  *  Include class definitions
  */
-require_once 'CiviTest/CiviUnitTestCase.php';
-
 
 /**
  *  Test APIv3 civicrm_action_schedule functions
  *
  * @package CiviCRM_APIv3
  * @subpackage API_ActionSchedule
+ * @group headless
  */
 class api_v3_ActionScheduleTest extends CiviUnitTestCase {
   protected $_params;
@@ -54,7 +53,6 @@ class api_v3_ActionScheduleTest extends CiviUnitTestCase {
     $activityContacts = CRM_Core_OptionGroup::values('activity_contacts', FALSE, FALSE, FALSE, NULL, 'name');
     $assigneeID = CRM_Utils_Array::key('Activity Assignees', $activityContacts);
     $scheduledStatus = CRM_Core_OptionGroup::getValue('activity_status', 'Scheduled', 'name');
-    $mappingId = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_ActionMapping', 'activity_type', 'id', 'entity_value');
     $activityTypeId = CRM_Core_OptionGroup::getValue('activity_type', "Meeting", 'name');
     $title = "simpleActionSchedule" . substr(sha1(rand()), 0, 7);
     $params = array(
@@ -66,7 +64,7 @@ class api_v3_ActionScheduleTest extends CiviUnitTestCase {
       'is_active' => 1,
       'record_activity' => 1,
       'start_action_date' => 'activity_date_time',
-      'mapping_id' => $mappingId,
+      'mapping_id' => CRM_Activity_ActionMapping::ACTIVITY_MAPPING_ID,
     );
     $actionSchedule = $this->callAPISuccess('action_schedule', 'create', $params);
     $this->assertTrue(is_numeric($actionSchedule['id']));
@@ -94,7 +92,6 @@ class api_v3_ActionScheduleTest extends CiviUnitTestCase {
     $activityContacts = CRM_Core_OptionGroup::values('activity_contacts', FALSE, FALSE, FALSE, NULL, 'name');
     $assigneeID = CRM_Utils_Array::key('Activity Assignees', $activityContacts);
     $scheduledStatus = CRM_Core_OptionGroup::getValue('activity_status', 'Scheduled', 'name');
-    $mappingId = CRM_Core_DAO::getFieldValue('CRM_Core_DAO_ActionMapping', 'activity_type', 'id', 'entity_value');
     $activityTypeId = CRM_Core_OptionGroup::getValue('activity_type', "Meeting", 'name');
     $title = "simpleActionSchedule" . substr(sha1(rand()), 0, 7);
     $params = array(
@@ -105,7 +102,7 @@ class api_v3_ActionScheduleTest extends CiviUnitTestCase {
       'entity_status' => $scheduledStatus,
       'is_active' => 1,
       'record_activity' => 1,
-      'mapping_id' => $mappingId,
+      'mapping_id' => CRM_Activity_ActionMapping::ACTIVITY_MAPPING_ID,
       'start_action_offset' => 3,
       'start_action_unit' => 'day',
       'start_action_condition' => 'before',

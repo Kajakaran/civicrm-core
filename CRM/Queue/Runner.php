@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -210,6 +210,7 @@ class CRM_Queue_Runner {
 
       $exception = NULL;
       try {
+        CRM_Core_Error::debug_log_message("Running task: " . $this->lastTaskTitle);
         $isOK = $item->data->run($this->getTaskContext());
         if (!$isOK) {
           $exception = new Exception('Task returned false');

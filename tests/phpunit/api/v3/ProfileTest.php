@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
-| CiviCRM version 4.6                                                |
+| CiviCRM version 4.7                                                |
 +--------------------------------------------------------------------+
 | Copyright CiviCRM LLC (c) 2004-2015                                |
 +--------------------------------------------------------------------+
@@ -26,14 +26,10 @@
  */
 
 /**
- *  Include class definitions
- */
-require_once 'tests/phpunit/CiviTest/CiviUnitTestCase.php';
-
-/**
  *  Test APIv3 civicrm_profile_* functions
  *
  * @package   CiviCRM
+ * @group headless
  */
 class api_v3_ProfileTest extends CiviUnitTestCase {
   protected $_apiversion;
@@ -45,8 +41,10 @@ class api_v3_ProfileTest extends CiviUnitTestCase {
     $this->_apiversion = 3;
     parent::setUp();
     $config = CRM_Core_Config::singleton();
-    $config->countryLimit[1] = 1013;
-    $config->stateLimit[1] = 1013;
+    $countryLimit = $config->countryLimit;
+    $countryLimit[1] = 1013;
+    $config->countryLimit = $countryLimit;
+
     $this->createLoggedInUser();
     $this->_membershipTypeID = $this->membershipTypeCreate();
   }
@@ -59,6 +57,7 @@ class api_v3_ProfileTest extends CiviUnitTestCase {
       'civicrm_address',
       'civicrm_membership',
       'civicrm_contribution',
+      'civicrm_uf_match',
     ), TRUE);
     $this->callAPISuccess('membership_type', 'delete', array('id' => $this->_membershipTypeID));
     // ok can't be bothered wring an api to do this & truncating is crazy
@@ -742,7 +741,7 @@ class api_v3_ProfileTest extends CiviUnitTestCase {
           'is_primary' => 1,
           'street_address' => '5 Saint Helier St',
           'county' => 'Marin',
-          'country' => 'United States',
+          'country' => 'UNITED STATES',
           'state_province' => 'Michigan',
           'supplemental_address_1' => 'Hallmark Ct',
           'supplemental_address_2' => 'Jersey Village',
@@ -799,7 +798,7 @@ class api_v3_ProfileTest extends CiviUnitTestCase {
         'is_primary' => 1,
         'name' => 'Saint Helier St',
         'county' => 'Marin',
-        'country' => 'United States',
+        'country' => 'UNITED STATES',
         'state_province' => 'Michigan',
         'supplemental_address_1' => 'Hallmark Ct',
         'supplemental_address_2' => 'Jersey Village',

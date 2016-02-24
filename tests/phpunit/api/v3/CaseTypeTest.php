@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,6 +29,7 @@ require_once 'CiviTest/CiviCaseTestCase.php';
 
 /**
  * Class api_v3_CaseTypeTest
+ * @group headless
  */
 class api_v3_CaseTypeTest extends CiviCaseTestCase {
 
@@ -69,7 +70,7 @@ class api_v3_CaseTypeTest extends CiviCaseTestCase {
    */
   public function tearDown() {
     parent::tearDown();
-    $this->quickCleanup(array('civicrm_case_type'));
+    $this->quickCleanup(array('civicrm_case_type', 'civicrm_uf_match'));
   }
 
   /**
@@ -114,8 +115,8 @@ class api_v3_CaseTypeTest extends CiviCaseTestCase {
 
     // Check result.
     $result = $this->callAPISuccess('CaseType', 'get', array('id' => $id));
-    $this->assertEquals($result['values'][$id]['id'], $id, 'in line ' . __LINE__);
-    $this->assertEquals($result['values'][$id]['title'], $params['title'], 'in line ' . __LINE__);
+    $this->assertEquals($result['values'][$id]['id'], $id);
+    $this->assertEquals($result['values'][$id]['title'], $params['title']);
   }
 
   /**
@@ -194,9 +195,9 @@ class api_v3_CaseTypeTest extends CiviCaseTestCase {
 
     // Check result
     $result = $this->callAPISuccess('CaseType', 'get', array('id' => $id));
-    $this->assertEquals($result['values'][$id]['id'], $id, 'in line ' . __LINE__);
-    $this->assertEquals($result['values'][$id]['title'], $params['title'], 'in line ' . __LINE__);
-    $this->assertEquals($result['values'][$id]['definition'], $params['definition'], 'in line ' . __LINE__);
+    $this->assertEquals($result['values'][$id]['id'], $id);
+    $this->assertEquals($result['values'][$id]['title'], $params['title']);
+    $this->assertEquals($result['values'][$id]['definition'], $params['definition']);
 
     $caseXml = CRM_Case_XMLRepository::singleton()->retrieve('Application_with_Definition');
     $this->assertTrue($caseXml instanceof SimpleXMLElement);

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,14 +25,12 @@
  +--------------------------------------------------------------------+
  */
 
-
-require_once 'CiviTest/CiviUnitTestCase.php';
-
 /**
  * Test class for UFGroup API - civicrm_uf_*
  * @todo Split UFGroup and UFJoin tests
  *
  * @package   CiviCRM
+ * @group headless
  */
 class api_v3_UFMatchTest extends CiviUnitTestCase {
   // ids from the uf_group_test.xml fixture

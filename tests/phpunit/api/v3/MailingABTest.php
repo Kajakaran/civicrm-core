@@ -23,13 +23,11 @@
  *   <http://www.gnu.org/licenses/>.
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
-
 /**
  *  Test APIv3 civicrm_mailingab_* functions
  *
  * @package   CiviCRM
+ * @group headless
  */
 class api_v3_MailingABTest extends CiviUnitTestCase {
   protected $_mailingID_A;
@@ -123,7 +121,6 @@ class api_v3_MailingABTest extends CiviUnitTestCase {
    * @dataProvider groupPctProvider
    */
   public function testDistribution($totalGroupContacts, $groupPct, $expectedCountA, $expectedCountB, $expectedCountC) {
-    $this->createLoggedInUser();
 
     $result = $this->groupContactCreate($this->_groupID, $totalGroupContacts);
     $this->assertEquals($totalGroupContacts, $result['added'], "in line " . __LINE__);

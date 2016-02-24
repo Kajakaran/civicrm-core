@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,12 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
   /**
-   * @param $caseType
+   * Run.
+   *
+   * @param string $caseType
    * @param array $params
    *
    * @return bool
@@ -368,12 +368,14 @@ class CRM_Case_XMLProcessor_Process extends CRM_Case_XMLProcessor {
 DELETE a
 FROM   civicrm_activity a
 INNER JOIN civicrm_activity_contact t ON t.activity_id = a.id
+INNER JOIN civicrm_case_activity ca on ca.activity_id = a.id
 WHERE  t.contact_id = %1
 AND    t.record_type_id = $targetID
 AND    a.is_auto = 1
 AND    a.is_current_revision = 1
+AND    ca.case_id = %2
 ";
-    $sqlParams = array(1 => array($params['clientID'], 'Integer'));
+    $sqlParams = array(1 => array($params['clientID'], 'Integer'), 2 => array($params['caseID'], 'Integer'));
     CRM_Core_DAO::executeQuery($query, $sqlParams);
   }
 
@@ -495,7 +497,7 @@ AND        a.is_deleted = 0
 
       // Add parameters for attachments
 
-      $numAttachments = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'max_attachments');
+      $numAttachments = Civi::settings()->get('max_attachments');
       for ($i = 1; $i <= $numAttachments; $i++) {
         $attachName = "attachFile_$i";
         if (isset($params[$attachName]) && !empty($params[$attachName])) {

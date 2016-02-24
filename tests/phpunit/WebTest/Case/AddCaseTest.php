@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -190,6 +190,8 @@ class WebTest_Case_AddCaseTest extends CiviSeleniumTestCase {
    */
   public function _testVerifyCaseRoles($caseRoles, $creatorName) {
     $id = $this->urlArg('id');
+    $this->click('css=div.crm-case-roles-block div.crm-accordion-header');
+
     $this->waitForElementPresent("xpath=//table[@id='caseRoles-selector-$id']/tbody/tr[4]/td[2]/a");
     // check that expected roles are listed in the Case Roles pane
     foreach ($caseRoles as $role) {
@@ -219,7 +221,7 @@ class WebTest_Case_AddCaseTest extends CiviSeleniumTestCase {
     // check that open case subject is present
     $this->assertText("case_id_$id", $subject);
     // click open case activity pop-up dialog
-    $this->click("link=$subject");
+    $this->click("xpath=//table[@id='case_id_{$id}']/tbody//tr/td[2]/div[text()='{$subject}']/../../td[8]/a[text()='View']");
     $this->waitForElementPresent("ActivityView");
     $this->waitForElementPresent("css=tr.crm-case-activity-view-Activity");
     // set page location of table containing activity view data
@@ -228,7 +230,7 @@ class WebTest_Case_AddCaseTest extends CiviSeleniumTestCase {
     // Probably don't need both tableId and prefix - but good examples for other situations where only one can be used
 
     $this->webtestVerifyTabularData($openCaseData, '', $activityViewTableId);
-    $this->click("xpath=//span[@class='ui-button-icon-primary ui-icon ui-icon-closethick']");
+    $this->click("xpath=//span[@class='ui-button-icon-primary ui-icon fa-times']");
   }
 
   /**

@@ -60,18 +60,14 @@
     window.tpls = tpls;
     var lastModifiedTpl = null;
     return {
+      // Get a template
+      // @param id MessageTemplate id  (per APIv3)
       // @return Promise MessageTemplate (per APIv3)
       get: function get(id) {
-        id = '' + id; // parseInt(id);
-        var dfr = $q.defer();
-        var tpl = _.where(tpls, {id: id});
-        if (id && tpl && tpl[0]) {
-          dfr.resolve(tpl[0]);
-        }
-        else {
-          dfr.reject(id);
-        }
-        return dfr.promise;
+        return crmApi('MessageTemplate', 'getsingle', {
+           "return": "id,msg_subject,msg_html,msg_title,msg_text",
+           "id": id
+        });
       },
       // Save a template
       // @param tpl MessageTemplate (per APIv3) For new templates, omit "id"
@@ -97,7 +93,8 @@
   });
 
   // The crmMailingMgr service provides business logic for loading, saving, previewing, etc
-  angular.module('crmMailing').factory('crmMailingMgr', function ($q, crmApi, crmFromAddresses) {
+  angular.module('crmMailing').factory('crmMailingMgr', function ($q, crmApi, crmFromAddresses, crmQueue) {
+    var qApi = crmQueue(crmApi);
     var pickDefaultMailComponent = function pickDefaultMailComponent(type) {
       var mcs = _.where(CRM.crmMailing.headerfooterList, {
         component_type: type,
@@ -116,7 +113,7 @@
       get: function get(id) {
         var crmMailingMgr = this;
         var mailing;
-        return crmApi('Mailing', 'getsingle', {id: id})
+        return qApi('Mailing', 'getsingle', {id: id})
           .then(function (getResult) {
             mailing = getResult;
             return $q.all([
@@ -172,7 +169,7 @@
       // @return Promise
       'delete': function (mailing) {
         if (mailing.id) {
-          return crmApi('Mailing', 'delete', {id: mailing.id});
+          return qApi('Mailing', 'delete', {id: mailing.id});
         }
         else {
           var d = $q.defer();
@@ -263,7 +260,7 @@
       // @return Promise an object with "subject", "body_text", "body_html"
       preview: function preview(mailing) {
         if (CRM.crmMailing.workflowEnabled && !CRM.checkPerm('create mailings') && !CRM.checkPerm('access CiviMail')) {
-          return crmApi('Mailing', 'preview', {id: mailing.id}).then(function(result) {
+          return qApi('Mailing', 'preview', {id: mailing.id}).then(function(result) {
             return result.values;
           });
         }
@@ -276,7 +273,7 @@
             }
           });
           delete params.recipients; // the content was merged in
-          return crmApi('Mailing', 'create', params).then(function(result) {
+          return qApi('Mailing', 'create', params).then(function(result) {
             // changes rolled back, so we don't care about updating mailing
             return result.values[result.id]['api.Mailing.preview'].values;
           });
@@ -302,9 +299,28 @@
           }
         });
         delete params.recipients; // the content was merged in
-        return crmApi('Mailing', 'create', params).then(function (recipResult) {
+        return qApi('Mailing', 'create', params).then(function (recipResult) {
           // changes rolled back, so we don't care about updating mailing
           return recipResult.values[recipResult.id]['api.MailingRecipients.get'].values;
+        });
+      },
+
+      previewRecipientCount: function previewRecipientCount(mailing) {
+        // To get list of recipients, we tentatively save the mailing and
+        // get the resulting recipients -- then rollback any changes.
+        var params = angular.extend({}, mailing, mailing.recipients, {
+          name: 'placeholder', // for previewing recipients on new, incomplete mailing
+          subject: 'placeholder', // for previewing recipients on new, incomplete mailing
+          options: {force_rollback: 1},
+          'api.mailing_job.create': 1, // note: exact match to API default
+          'api.MailingRecipients.getcount': {
+            mailing_id: '$value.id'
+          }
+        });
+        delete params.recipients; // the content was merged in
+        return qApi('Mailing', 'create', params).then(function (recipResult) {
+          // changes rolled back, so we don't care about updating mailing
+          return recipResult.values[recipResult.id]['api.MailingRecipients.getcount'];
         });
       },
 
@@ -330,7 +346,7 @@
 
         delete params.recipients; // the content was merged in
 
-        return crmApi('Mailing', 'create', params).then(function(result) {
+        return qApi('Mailing', 'create', params).then(function(result) {
           if (result.id && !mailing.id) {
             mailing.id = result.id;
           }  // no rollback, so update mailing.id
@@ -349,7 +365,7 @@
           approval_date: 'now',
           scheduled_date: mailing.scheduled_date ? mailing.scheduled_date : 'now'
         };
-        return crmApi('Mailing', 'submit', params)
+        return qApi('Mailing', 'submit', params)
           .then(function (result) {
             angular.extend(mailing, result.values[result.id]); // Perhaps we should reload mailing based on result?
             return crmMailingMgr._loadJobs(mailing);
@@ -382,7 +398,7 @@
 
         delete params.recipients; // the content was merged in
 
-        return crmApi('Mailing', 'create', params).then(function (result) {
+        return qApi('Mailing', 'create', params).then(function (result) {
           if (result.id && !mailing.id) {
             mailing.id = result.id;
           }  // no rollback, so update mailing.id
@@ -415,7 +431,7 @@
             });
             result = dialogService.open('previewDialog', templates[mode], content, options);
           });
-        crmStatus({start: ts('Previewing'), success: ''}, p);
+        crmStatus({start: ts('Previewing...'), success: ''}, p);
         return result;
       },
 
@@ -437,15 +453,15 @@
 
   angular.module('crmMailing').factory('crmMailingStats', function (crmApi, crmLegacy) {
     var statTypes = [
-      // {name: 'Recipients', title: ts('Intended Recipients'),   searchFilter: '',                           eventsFilter: '&event=queue'},
-      {name: 'Delivered',     title: ts('Successful Deliveries'), searchFilter: '&mailing_delivery_status=Y', eventsFilter: '&event=delivered'},
-      {name: 'Opened',        title: ts('Tracked Opens'),         searchFilter: '&mailing_open_status=Y',     eventsFilter: '&event=opened'},
-      {name: 'Unique Clicks', title: ts('Click-throughs'),        searchFilter: '&mailing_click_status=Y',    eventsFilter: '&event=click&distinct=1'},
-      // {name: 'Forward',    title: ts('Forwards'),              searchFilter: '&mailing_forward=1',         eventsFilter: '&event=forward'},
-      // {name: 'Replies',    title: ts('Replies'),               searchFilter: '&mailing_reply_status=Y',    eventsFilter: '&event=reply'},
-      {name: 'Bounces',       title: ts('Bounces'),               searchFilter: '&mailing_delivery_status=N', eventsFilter: '&event=bounce'},
-      {name: 'Unsubscribers', title: ts('Unsubscribes'),          searchFilter: '&mailing_unsubscribe=1',     eventsFilter: '&event=unsubscribe'}
-      // {name: 'OptOuts',    title: ts('Opt-Outs'),              searchFilter: '&mailing_optout=1',          eventsFilter: '&event=optout'}
+      // {name: 'Recipients', title: ts('Intended Recipients'),   searchFilter: '',                           eventsFilter: '&event=queue', reportType: 'detail', reportFilter: ''},
+      {name: 'Delivered',     title: ts('Successful Deliveries'), searchFilter: '&mailing_delivery_status=Y', eventsFilter: '&event=delivered', reportType: 'detail', reportFilter: '&delivery_status_value=successful'},
+      {name: 'Opened',        title: ts('Tracked Opens'),         searchFilter: '&mailing_open_status=Y',     eventsFilter: '&event=opened', reportType: 'opened', reportFilter: ''},
+      {name: 'Unique Clicks', title: ts('Click-throughs'),        searchFilter: '&mailing_click_status=Y',    eventsFilter: '&event=click&distinct=1', reportType: 'clicks', reportFilter: ''},
+      // {name: 'Forward',    title: ts('Forwards'),              searchFilter: '&mailing_forward=1',         eventsFilter: '&event=forward', reportType: 'detail', reportFilter: '&is_forwarded_value=1'},
+      // {name: 'Replies',    title: ts('Replies'),               searchFilter: '&mailing_reply_status=Y',    eventsFilter: '&event=reply', reportType: 'detail', reportFilter: '&is_replied_value=1'},
+      {name: 'Bounces',       title: ts('Bounces'),               searchFilter: '&mailing_delivery_status=N', eventsFilter: '&event=bounce', reportType: 'bounce', reportFilter: ''},
+      {name: 'Unsubscribers', title: ts('Unsubscribes'),          searchFilter: '&mailing_unsubscribe=1',     eventsFilter: '&event=unsubscribe', reportType: 'detail', reportFilter: '&is_unsubscribed_value=1'},
+      // {name: 'OptOuts',    title: ts('Opt-Outs'),              searchFilter: '&mailing_optout=1',          eventsFilter: '&event=optout', reportType: 'detail', reportFilter: ''}
     ];
 
     return {
@@ -489,12 +505,13 @@
             var retParams = returnPath ? '&context=angPage&angPage=' + returnPath : '';
             return crmLegacy.url('civicrm/mailing/report/event',
               'reset=1&mid=' + mailing.id + statType.eventsFilter + retParams);
-
           case 'search':
             return crmLegacy.url('civicrm/contact/search/advanced',
               'force=1&mailing_id=' + mailing.id + statType.searchFilter);
-
-          // TODO: case 'report':
+          case 'report':
+            var reportIds = CRM.crmMailing.reportIds; 
+            return crmLegacy.url('civicrm/report/instance/' + reportIds[statType.reportType],
+                'reset=1&mailing_id_value=' + mailing.id + statType.reportFilter);
           default:
             return null;
         }

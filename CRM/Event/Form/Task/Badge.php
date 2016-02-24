@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -89,6 +89,9 @@ class CRM_Event_Form_Task_Badge extends CRM_Event_Form_Task {
    */
   public function buildQuickForm() {
     CRM_Utils_System::setTitle(ts('Make Name Badges'));
+
+    // Ajax submit would interfere with file download
+    $this->preventAjaxSubmit();
 
     //add select for label
     $label = CRM_Badge_BAO_Layout::getList();

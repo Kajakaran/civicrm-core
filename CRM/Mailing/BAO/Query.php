@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -9,7 +9,7 @@
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -28,8 +29,6 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 class CRM_Mailing_BAO_Query {
 
@@ -54,8 +53,6 @@ class CRM_Mailing_BAO_Query {
    * If mailings are involved, add the specific Mailing fields
    *
    * @param $query
-   *
-   * @return void
    */
   public static function select(&$query) {
     // if Mailing mode add mailing id
@@ -121,6 +118,12 @@ class CRM_Mailing_BAO_Query {
         $query->_select['mailing_recipients_id'] = " civicrm_mailing_recipients.id as mailing_recipients_id";
         $query->_element['mailing_recipients_id'] = 1;
       }
+    }
+
+    if (CRM_Utils_Array::value('mailing_campaign_id', $query->_returnProperties)) {
+      $query->_select['mailing_campaign_id'] = 'civicrm_mailing.campaign_id as mailing_campaign_id';
+      $query->_element['mailing_campaign_id'] = 1;
+      $query->_tables['civicrm_campaign'] = 1;
     }
   }
 
@@ -206,6 +209,7 @@ class CRM_Mailing_BAO_Query {
     if ($mode & CRM_Contact_BAO_Query::MODE_MAILING) {
       $properties = array(
         'mailing_id' => 1,
+        'mailing_campaign_id' => 1,
         'mailing_name' => 1,
         'sort_name' => 1,
         'email' => 1,
@@ -374,6 +378,15 @@ class CRM_Mailing_BAO_Query {
           $query->_qill[$grouping][] = "Mailing Job Status IS \"$value\"";
         }
         return;
+
+      case 'mailing_campaign_id':
+        $name = 'campaign_id';
+        $query->_where[$grouping][] = CRM_Contact_BAO_Query::buildClause("civicrm_mailing.$name", $op, $value, 'Integer');
+        list($op, $value) = CRM_Contact_BAO_Query::buildQillForFieldValue('CRM_Mailing_DAO_Mailing', $name, $value, $op);
+        $query->_qill[$grouping][] = ts('Campaign %1 %2', array(1 => $op, 2 => $value));
+        $query->_tables['civicrm_mailing'] = $query->_whereTables['civicrm_mailing'] = 1;
+        $query->_tables['civicrm_mailing_recipients'] = $query->_whereTables['civicrm_mailing_recipients'] = 1;
+        return;
     }
   }
 
@@ -382,7 +395,6 @@ class CRM_Mailing_BAO_Query {
    *
    *
    * @param CRM_Core_Form $form
-   * @return void
    */
   public static function buildSearchForm(&$form) {
     // mailing selectors
@@ -422,6 +434,8 @@ class CRM_Mailing_BAO_Query {
     $form->add('checkbox', 'mailing_unsubscribe', ts('Unsubscribe Requests'));
     $form->add('checkbox', 'mailing_optout', ts('Opt-out Requests'));
     $form->add('checkbox', 'mailing_forward', ts('Forwards'));
+    // Campaign select field
+    CRM_Campaign_BAO_Campaign::addCampaignInComponentSearch($form, 'mailing_campaign_id');
 
     $form->assign('validCiviMailing', TRUE);
   }
@@ -449,8 +463,6 @@ class CRM_Mailing_BAO_Query {
    * @param $fieldTitle
    *
    * @param $valueTitles
-   *
-   * @return void
    */
   public static function mailingEventQueryBuilder(&$query, &$values, $tableName, $fieldName, $fieldTitle, &$valueTitles) {
     list($name, $op, $value, $grouping, $wildcard) = $values;

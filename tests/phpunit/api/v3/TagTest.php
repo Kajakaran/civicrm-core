@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,14 +25,12 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
-
 /**
  *  Test APIv3 civicrm_tag_* functions
  *
  * @package CiviCRM_APIv3
  * @subpackage API_Core
+ * @group headless
  */
 class api_v3_TagTest extends CiviUnitTestCase {
   protected $_apiversion = 3;
@@ -74,7 +72,7 @@ class api_v3_TagTest extends CiviUnitTestCase {
       'name' => $this->tag['name'],
     );
     $result = $this->callAPIAndDocument('tag', 'get', $params, __FUNCTION__, __FILE__);
-    $this->assertEquals($this->tag['description'], $result['values'][$this->tagID]['description'], 'In line ' . __LINE__);
+    $this->assertEquals($this->tag['description'], $result['values'][$this->tagID]['description']);
     $this->assertEquals($this->tag['name'], $result['values'][$this->tagID]['name']);
   }
 
@@ -114,7 +112,7 @@ class api_v3_TagTest extends CiviUnitTestCase {
       'description' => 'This is description for New Tag 02',
     );
     $result = $this->callAPISuccess('tag', 'create', $params);
-    $this->assertEquals(10, $result['id'], 'In line ' . __LINE__);
+    $this->assertEquals(10, $result['id']);
   }
 
   /**
@@ -196,9 +194,9 @@ class api_v3_TagTest extends CiviUnitTestCase {
       'extra' => array('used_for'),
     );
     $result = $this->callAPIAndDocument('tag', 'getlist', $params, __FUNCTION__, __FILE__, $description);
-    $this->assertEquals($this->tag['id'], $result['values'][0]['id'], 'In line ' . __LINE__);
-    $this->assertEquals($this->tag['description'], $result['values'][0]['description'][0], 'In line ' . __LINE__);
-    $this->assertEquals($this->tag['used_for'], $result['values'][0]['extra']['used_for'], 'In line ' . __LINE__);
+    $this->assertEquals($this->tag['id'], $result['values'][0]['id']);
+    $this->assertEquals($this->tag['description'], $result['values'][0]['description'][0]);
+    $this->assertEquals($this->tag['used_for'], $result['values'][0]['extra']['used_for']);
   }
 
 }

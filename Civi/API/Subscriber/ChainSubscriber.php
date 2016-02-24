@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -69,7 +69,7 @@ class ChainSubscriber implements EventSubscriberInterface {
     $apiRequest = $event->getApiRequest();
     $result = $event->getResponse();
     if (\CRM_Utils_Array::value('is_error', $result, 0) == 0) {
-      $this->callNestedApi($apiRequest['params'], $result, $apiRequest['action'], $apiRequest['entity'], $apiRequest['version']);
+      $this->callNestedApi($event->getApiKernel(), $apiRequest['params'], $result, $apiRequest['action'], $apiRequest['entity'], $apiRequest['version']);
       $event->setResponse($result);
     }
   }
@@ -78,6 +78,7 @@ class ChainSubscriber implements EventSubscriberInterface {
    * Call any nested api calls.
    *
    * TODO: We don't really need this to be a separate function.
+   * @param \Civi\API\Kernel $apiKernel
    * @param $params
    * @param $result
    * @param $action
@@ -85,7 +86,7 @@ class ChainSubscriber implements EventSubscriberInterface {
    * @param $version
    * @throws \Exception
    */
-  protected function callNestedApi(&$params, &$result, $action, $entity, $version) {
+  protected function callNestedApi($apiKernel, &$params, &$result, $action, $entity, $version) {
     $lowercase_entity = _civicrm_api_get_entity_name_from_camel($entity);
 
     // We don't need to worry about nested api in the getfields/getoptions
@@ -131,8 +132,10 @@ class ChainSubscriber implements EventSubscriberInterface {
             //'entity_table' will be set to 'contact' & 'id' to the contact id
             //from the parent call. in this case 'contact_id' will also be
             //set to the parent's id
-            $subParams["entity_id"] = $parentAPIValues['id'];
-            $subParams['entity_table'] = 'civicrm_' . $lowercase_entity;
+            if (!($subEntity == 'line_item' && $lowercase_entity == 'contribution' && $action != 'create')) {
+              $subParams["entity_id"] = $parentAPIValues['id'];
+              $subParams['entity_table'] = 'civicrm_' . $lowercase_entity;
+            }
 
             $crm16084 = FALSE;
             if ($subEntity == 'relationship' && $lowercase_entity == 'contact') {
@@ -155,7 +158,7 @@ class ChainSubscriber implements EventSubscriberInterface {
           if ($entity != 'Contact' && \CRM_Utils_Array::value(strtolower($subEntity . "_id"), $parentAPIValues)) {
             //e.g. if event_id is in the values returned & subentity is event
             //then pass in event_id as 'id' don't do this for contact as it
-            //does some wierd things like returning primary email &
+            //does some weird things like returning primary email &
             //thus limiting the ability to chain email
             //TODO - this might need the camel treatment
             $subParams['id'] = $parentAPIValues[$subEntity . "_id"];
@@ -182,7 +185,7 @@ class ChainSubscriber implements EventSubscriberInterface {
             foreach ($newparams as $entityparams) {
               $subParams = array_merge($genericParams, $entityparams);
               _civicrm_api_replace_variables($subParams, $result['values'][$idIndex], $separator);
-              $result['values'][$result['id']][$field][] = civicrm_api($subEntity, $subaction, $subParams);
+              $result['values'][$idIndex][$field][] = $apiKernel->run($subEntity, $subaction, $subParams);
               if ($result['is_error'] === 1) {
                 throw new \Exception($subEntity . ' ' . $subaction . 'call failed with' . $result['error_message']);
               }
@@ -192,7 +195,7 @@ class ChainSubscriber implements EventSubscriberInterface {
 
             $subParams = array_merge($subParams, $newparams);
             _civicrm_api_replace_variables($subParams, $result['values'][$idIndex], $separator);
-            $result['values'][$idIndex][$field] = civicrm_api($subEntity, $subaction, $subParams);
+            $result['values'][$idIndex][$field] = $apiKernel->run($subEntity, $subaction, $subParams);
             if (!empty($result['is_error'])) {
               throw new \Exception($subEntity . ' ' . $subaction . 'call failed with' . $result['error_message']);
             }

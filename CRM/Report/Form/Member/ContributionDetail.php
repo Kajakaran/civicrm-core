@@ -1,7 +1,7 @@
 <?php
 /*
   +--------------------------------------------------------------------+
-  | CiviCRM version 4.6                                                |
+  | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
   | Copyright CiviCRM LLC (c) 2004-2015                                |
   +--------------------------------------------------------------------+
@@ -195,6 +195,7 @@ class CRM_Report_Form_Member_ContributionDetail extends CRM_Report_Form {
           'receive_date' => array('operatorType' => CRM_Report_Form::OP_DATE),
           'financial_type_id' => array(
             'title' => ts('Financial Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Contribute_PseudoConstant::financialType(),
           ),
@@ -207,6 +208,7 @@ class CRM_Report_Form_Member_ContributionDetail extends CRM_Report_Form {
           ),
           'payment_instrument_id' => array(
             'title' => ts('Payment Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Contribute_PseudoConstant::paymentInstrument(),
           ),
@@ -238,6 +240,9 @@ class CRM_Report_Form_Member_ContributionDetail extends CRM_Report_Form {
           'product_option' => array(
             'title' => ts('Premium Option'),
           ),
+          'fulfilled_date' => array(
+            'title' => ts('Premium Fulfilled Date'),
+          ),
           'contribution_id' => array(
             'no_display' => TRUE,
           ),
@@ -249,6 +254,7 @@ class CRM_Report_Form_Member_ContributionDetail extends CRM_Report_Form {
         'filters' => array(
           'ordinality' => array(
             'title' => ts('Contribution Ordinality'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => array(
               0 => 'First by Contributor',
@@ -465,7 +471,8 @@ class CRM_Report_Form_Member_ContributionDetail extends CRM_Report_Form {
 
     //for premiums
     if (!empty($this->_params['fields']['product_name']) ||
-      !empty($this->_params['fields']['product_option'])
+      !empty($this->_params['fields']['product_option']) ||
+      !empty($this->_params['fields']['fulfilled_date'])
     ) {
       $this->_from .= "
                  LEFT JOIN  civicrm_contribution_product {$this->_aliases['civicrm_contribution_product']}
@@ -534,11 +541,12 @@ class CRM_Report_Form_Member_ContributionDetail extends CRM_Report_Form {
    */
   public function tempTable($applyLimit = TRUE) {
     // create temp table with contact ids,contribtuion id,membership id
-    $dropTempTable = 'DROP TABLE IF EXISTS civireport_membership_contribution_detail';
+    $dropTempTable = 'DROP TEMPORARY TABLE IF EXISTS civireport_membership_contribution_detail';
     CRM_Core_DAO::executeQuery($dropTempTable);
 
     $sql = 'CREATE TEMPORARY TABLE civireport_membership_contribution_detail
-            (contribution_id int, contact_id int, membership_id int, payment_id int) ENGINE=HEAP';
+            (contribution_id int, INDEX USING HASH(contribution_id), contact_id int, INDEX USING HASH(contact_id),
+            membership_id int, INDEX USING HASH(membership_id), payment_id int, INDEX USING HASH(payment_id)) ENGINE=MEMORY';
     CRM_Core_DAO::executeQuery($sql);
 
     $fillTemp = "
@@ -582,6 +590,7 @@ class CRM_Report_Form_Member_ContributionDetail extends CRM_Report_Form {
     }
 
     $sql = "{$this->_select} {$this->_from} {$this->_where} {$this->_groupBy} {$this->_having} {$this->_orderBy} {$this->_limit}";
+    $this->addToDeveloperTab($sql);
     return $sql;
   }
 
@@ -606,10 +615,12 @@ class CRM_Report_Form_Member_ContributionDetail extends CRM_Report_Form {
   public function statistics(&$rows) {
     $statistics = parent::statistics($rows);
 
-    $select = "                                                                                                                                                                                                     SELECT COUNT({$this->_aliases['civicrm_contribution']}.total_amount ) as count,                                                                                                                                   SUM( {$this->_aliases['civicrm_contribution']}.total_amount ) as amount,                                                                                                                                   ROUND(AVG({$this->_aliases['civicrm_contribution']}.total_amount), 2) as avg,                                                                                                                              {$this->_aliases['civicrm_contribution']}.currency as currency                                                                                                                                       ";
+    $select = "SELECT DISTINCT {$this->_aliases['civicrm_contribution']}.id";
 
-    $group = "\nGROUP BY {$this->_aliases['civicrm_contribution']}.currency";
-    $sql = "{$select} {$this->_from} {$this->_where} {$group}";
+    $sql = "SELECT COUNT(cc.id) as count, SUM(cc.total_amount) as amount, ROUND(AVG(cc.total_amount), 2) as avg, cc.currency as currency
+            FROM civicrm_contribution cc
+            WHERE cc.id IN ({$select} {$this->_from} {$this->_where})
+            GROUP BY cc.currency";
 
     $dao = CRM_Core_DAO::executeQuery($sql);
     $totalAmount = $average = array();

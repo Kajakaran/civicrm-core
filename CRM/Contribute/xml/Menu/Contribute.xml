@@ -141,7 +141,7 @@
   </item>
   <item>
     <path>civicrm/admin/options/payment_instrument</path>
-    <title>Payment Instruments</title>
+    <title>Payment Methods</title>
     <page_callback>CRM_Admin_Page_Options</page_callback>
     <desc>You may choose to record the payment instrument used for each contribution. Common payment methods are installed by default (e.g. Check, Cash, Credit Card...). If your site requires additional payment methods, add them here.</desc>
     <adminGroup>CiviContribute</adminGroup>
@@ -304,7 +304,7 @@
     <path>civicrm/contribute/invoice</path>
     <title>PDF Invoice</title>
     <page_callback>CRM_Contribute_Form_Task_Invoice::getPrintPDF</page_callback>
-    <access_arguments>access CiviContribute</access_arguments>
+    <access_callback>CRM_Core_Permission::checkDownloadInvoice</access_callback>
     <page_type>1</page_type>
     <weight>620</weight>
     <component>CiviContribute</component>

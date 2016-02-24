@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -37,6 +37,12 @@
 </tr>
 <tr>
 {include file="CRM/Core/DateRange.tpl" fieldName="event" from='_start_date_low' to='_end_date_high'}
+</tr>
+<tr>
+  <td><label>{ts}Registration Date{/ts}</label></td>
+</tr>
+<tr>
+{include file="CRM/Core/DateRange.tpl" fieldName="participant" from='_register_date_low' to='_register_date_high'}
 </tr>
 <tr>
   <td class="crm-event-form-block-participant_status"><label>{$form.participant_status_id.label}</label>
@@ -86,7 +92,15 @@ CRM.$(function($) {
   var recurringLabel = $('label[for=event_include_repeating_events]').html();
   // Conditional rule for recurring checkbox
   function toggleRecurrigCheckbox() {
-    if ($(this).val() && $(this).select2('data')['api.RecurringEntity.getcount']) {
+    var isRepeating = false;
+    if ($(this).val()) {
+      // Workaround: In some cases this code gets called before the select2 initialization.
+      if (!$(this).data('select2')) {
+        $(this).crmEntityRef();
+      }
+      isRepeating = $(this).select2('data').extra.is_recur;
+    }
+    if (isRepeating) {
       $('.crm-event-form-block-event_include_repeating_events').show();
       $('label[for=event_include_repeating_events]').html(recurringLabel.replace('%1', $(this).select2('data').label));
     } else {

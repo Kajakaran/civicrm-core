@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -50,6 +50,20 @@ class CRM_Utils_System_UnitTests extends CRM_Utils_System_Base {
   public function authenticate($name, $password, $loadCMSBootstrap = FALSE, $realPath = NULL) {
     $retVal = array(1, 1, 12345);
     return $retVal;
+  }
+
+  /**
+   * Bootstrap the phony CMS.
+   *
+   * @param string $name
+   *   Optional username for login.
+   * @param string $pass
+   *   Optional password for login.
+   *
+   * @return bool
+   */
+  public function loadBootStrap($name = NULL, $pass = NULL) {
+    return TRUE;
   }
 
   /**
@@ -148,7 +162,7 @@ class CRM_Utils_System_UnitTests extends CRM_Utils_System_Base {
    */
   public function logout() {
     session_destroy();
-    header("Location:index.php");
+    CRM_Utils_System::setHttpHeader("Location", "index.php");
   }
 
   /**

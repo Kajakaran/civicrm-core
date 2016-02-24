@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -120,6 +120,8 @@ class CRM_Core_Permission {
   public static function check($permissions) {
     $permissions = (array) $permissions;
 
+    $tempPerm = CRM_Core_Config::singleton()->userPermissionTemp;
+
     foreach ($permissions as $permission) {
       if (is_array($permission)) {
         foreach ($permission as $orPerm) {
@@ -132,7 +134,10 @@ class CRM_Core_Permission {
         return FALSE;
       }
       else {
-        if (!CRM_Core_Config::singleton()->userPermissionClass->check($permission)) {
+        if (
+          !CRM_Core_Config::singleton()->userPermissionClass->check($permission)
+          && !($tempPerm && $tempPerm->check($permission))
+        ) {
           //one of our 'and' conditions has not been met
           return FALSE;
         }
@@ -503,13 +508,14 @@ class CRM_Core_Permission {
     }
 
     // if component_id is present, ensure it is enabled
-    if (isset($item['component_id']) &&
-      $item['component_id']
-    ) {
+    if (isset($item['component_id']) && $item['component_id']) {
+      if (!isset(Civi::$statics[__CLASS__]['componentNameId'])) {
+        Civi::$statics[__CLASS__]['componentNameId'] = array_flip(CRM_Core_Component::getComponentIDs());
+      }
+      $componentName = Civi::$statics[__CLASS__]['componentNameId'][$item['component_id']];
+
       $config = CRM_Core_Config::singleton();
-      if (is_array($config->enableComponentIDs) &&
-        in_array($item['component_id'], $config->enableComponentIDs)
-      ) {
+      if (is_array($config->enableComponents) && in_array($componentName, $config->enableComponents)) {
         // continue with process
       }
       else {
@@ -547,30 +553,18 @@ class CRM_Core_Permission {
 
   /**
    * @param bool $all
+   *   Include disabled components
    * @param bool $descriptions
-   *   whether to return descriptions
+   *   Whether to return descriptions
    *
    * @return array
    */
-  public static function &basicPermissions($all = FALSE, $descriptions = FALSE) {
-    if ($descriptions) {
-      static $permissionsDesc = NULL;
-
-      if (!$permissionsDesc) {
-        $permissionsDesc = self::assembleBasicPermissions($all, $descriptions);
-      }
-
-      return $permissionsDesc;
+  public static function basicPermissions($all = FALSE, $descriptions = FALSE) {
+    $cacheKey = implode('-', array($all, $descriptions));
+    if (empty(Civi::$statics[__CLASS__][__FUNCTION__][$cacheKey])) {
+      Civi::$statics[__CLASS__][__FUNCTION__][$cacheKey] = self::assembleBasicPermissions($all, $descriptions);
     }
-    else {
-      static $permissions = NULL;
-
-      if (!$permissions) {
-        $permissions = self::assembleBasicPermissions($all, $descriptions);
-      }
-
-      return $permissions;
-    }
+    return Civi::$statics[__CLASS__][__FUNCTION__][$cacheKey];
   }
 
   /**
@@ -586,9 +580,14 @@ class CRM_Core_Permission {
     $permissions = self::getCorePermissions($descriptions);
 
     if (self::isMultisiteEnabled()) {
-      $permissions['administer Multiple Organizations'] = $prefix . ts('administer Multiple Organizations');
+      $permissions['administer Multiple Organizations'] = array($prefix . ts('administer Multiple Organizations'));
     }
 
+    if (!$descriptions) {
+      foreach ($permissions as $name => $attr) {
+        $permissions[$name] = array_shift($attr);
+      }
+    }
     if (!$all) {
       $components = CRM_Core_Component::getEnabledComponents();
     }
@@ -600,16 +599,19 @@ class CRM_Core_Permission {
       $perm = $comp->getPermissions(FALSE, $descriptions);
       if ($perm) {
         $info = $comp->getInfo();
-        if ($descriptions) {
-          foreach ($perm as $p => $attr) {
-            $title = $info['translatedName'] . ': ' . array_shift($attr);
-            array_unshift($attr, $title);
+        foreach ($perm as $p => $attr) {
+
+          if (!is_array($attr)) {
+            $attr = array($attr);
+          }
+
+          $attr[0] = $info['translatedName'] . ': ' . $attr[0];
+
+          if ($descriptions) {
             $permissions[$p] = $attr;
           }
-        }
-        else {
-          foreach ($perm as $p) {
-            $permissions[$p] = $info['translatedName'] . ': ' . $p;
+          else {
+            $permissions[$p] = $attr[0];
           }
         }
       }
@@ -618,6 +620,7 @@ class CRM_Core_Permission {
     // Add any permissions defined in hook_civicrm_permission implementations.
     $module_permissions = $config->userPermissionClass->getAllModulePermissions($descriptions);
     $permissions = array_merge($permissions, $module_permissions);
+    CRM_Financial_BAO_FinancialType::permissionedFinancialTypes($permissions, $descriptions);
     return $permissions;
   }
 
@@ -651,12 +654,11 @@ class CRM_Core_Permission {
   }
 
   /**
-   * @param bool $descriptions
-   *   whether to return descriptions
+   * Get core permissions.
    *
    * @return array
    */
-  public static function getCorePermissions($descriptions = FALSE) {
+  public static function getCorePermissions() {
     $prefix = ts('CiviCRM') . ': ';
     $permissions = array(
       'add contacts' => array(
@@ -763,10 +765,15 @@ class CRM_Core_Permission {
         $prefix . ts('merge duplicate contacts'),
         ts('Delete Contacts must also be granted in order for this to work.'),
       ),
+      'force merge duplicate contacts' => array(
+        $prefix . ts('force merge duplicate contacts'),
+        ts('Delete Contacts must also be granted in order for this to work.'),
+      ),
       'view debug output' => array(
         $prefix . ts('view debug output'),
         ts('View results of debug and backtrace'),
       ),
+
       'view all notes' => array(
         $prefix . ts('view all notes'),
         ts("View notes (for visible contacts) even if they're marked admin only"),
@@ -822,13 +829,11 @@ class CRM_Core_Permission {
       'edit message templates' => array(
         $prefix . ts('edit message templates'),
       ),
+      'view my invoices' => array(
+        $prefix . ts('view my invoices'),
+        ts('Allow users to view/ download their own invoices'),
+      ),
     );
-
-    if (!$descriptions) {
-      foreach ($permissions as $name => $attr) {
-        $permissions[$name] = array_shift($attr);
-      }
-    }
 
     return $permissions;
   }
@@ -897,7 +902,7 @@ class CRM_Core_Permission {
 
     if (is_array($allCompPermissions)) {
       foreach ($allCompPermissions as $name => $permissions) {
-        if (in_array($permission, $permissions)) {
+        if (array_key_exists($permission, $permissions)) {
           $componentName = $name;
           break;
         }
@@ -939,9 +944,25 @@ class CRM_Core_Permission {
    * @return bool
    */
   public static function isMultisiteEnabled() {
-    return CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::MULTISITE_PREFERENCES_NAME,
-      'is_enabled'
-    ) ? TRUE : FALSE;
+    return Civi::settings()->get('is_enabled') ? TRUE : FALSE;
+  }
+
+  /**
+   * Verify if the user has permission to get the invoice.
+   *
+   * @return bool
+   *   TRUE if the user has download all invoices permission or download my
+   *   invoices permission and the invoice author is the current user.
+   */
+  public static function checkDownloadInvoice() {
+    global $user;
+    $cid = CRM_Core_BAO_UFMatch::getContactId($user->uid);
+    if (CRM_Core_Permission::check('access CiviContribute') ||
+      (CRM_Core_Permission::check('view my invoices') && $_GET['cid'] == $cid)
+    ) {
+      return TRUE;
+    }
+    return FALSE;
   }
 
 }

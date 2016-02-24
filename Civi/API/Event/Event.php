@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -32,6 +32,12 @@ namespace Civi\API\Event;
  * @package Civi\API\Event
  */
 class Event extends \Symfony\Component\EventDispatcher\Event {
+
+  /**
+   * @var \Civi\API\Kernel
+   */
+  protected $apiKernel;
+
   /**
    * @var \Civi\API\Provider\ProviderInterface
    *   The API provider responsible for executing the request.
@@ -51,10 +57,21 @@ class Event extends \Symfony\Component\EventDispatcher\Event {
    *   The API responsible for executing the request.
    * @param array $apiRequest
    *   The full description of the API request.
+   * @param \Civi\API\Kernel $apiKernel
    */
-  public function __construct($apiProvider, $apiRequest) {
+  public function __construct($apiProvider, $apiRequest, $apiKernel) {
+    $this->apiKernel = $apiKernel;
     $this->apiProvider = $apiProvider;
     $this->apiRequest = $apiRequest;
+  }
+
+  /**
+   * Get api kernel.
+   *
+   * @return \Civi\API\Kernel
+   */
+  public function getApiKernel() {
+    return $this->apiKernel;
   }
 
   /**

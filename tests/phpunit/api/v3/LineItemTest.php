@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
-| CiviCRM version 4.6                                                |
+| CiviCRM version 4.7                                                |
 +--------------------------------------------------------------------+
 | Copyright CiviCRM LLC (c) 2004-2015                                |
 +--------------------------------------------------------------------+
@@ -25,10 +25,9 @@
 +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
 /**
  * Class api_v3_LineItemTest
+ * @group headless
  */
 class api_v3_LineItemTest extends CiviUnitTestCase {
   protected $_apiversion = 3;
@@ -71,8 +70,8 @@ class api_v3_LineItemTest extends CiviUnitTestCase {
 
   public function testCreateLineItem() {
     $result = $this->callAPIAndDocument($this->_entity, 'create', $this->params + array('debug' => 1), __FUNCTION__, __FILE__);
-    $this->assertEquals(1, $result['count'], 'In line ' . __LINE__);
-    $this->assertNotNull($result['values'][$result['id']]['id'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $result['count']);
+    $this->assertNotNull($result['values'][$result['id']]['id']);
     $this->getAndCheck($this->params, $result['id'], $this->_entity);
   }
 
@@ -81,7 +80,7 @@ class api_v3_LineItemTest extends CiviUnitTestCase {
       'entity_table' => 'civicrm_contribution',
     );
     $getResult = $this->callAPIAndDocument($this->_entity, 'get', $getParams, __FUNCTION__, __FILE__);
-    $this->assertEquals(1, $getResult['count'], 'In line ' . __LINE__);
+    $this->assertEquals(1, $getResult['count']);
   }
 
   public function testDeleteLineItem() {
@@ -92,7 +91,7 @@ class api_v3_LineItemTest extends CiviUnitTestCase {
     $deleteParams = array('id' => $getResult['id']);
     $deleteResult = $this->callAPIAndDocument($this->_entity, 'delete', $deleteParams, __FUNCTION__, __FILE__);
     $checkDeleted = $this->callAPISuccess($this->_entity, 'get', array());
-    $this->assertEquals(0, $checkDeleted['count'], 'In line ' . __LINE__);
+    $this->assertEquals(0, $checkDeleted['count']);
   }
 
   public function testGetFieldsLineItem() {

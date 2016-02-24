@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -35,10 +35,10 @@
  * @version $Id: Job.php 30879 2010-11-22 15:45:55Z shot $
  *
  */
-require_once 'CiviTest/CiviUnitTestCase.php';
 
 /**
  * Class api_v3_JobTest
+ * @group headless
  */
 class api_v3_JobTest extends CiviUnitTestCase {
   protected $_apiversion = 3;
@@ -96,7 +96,7 @@ class api_v3_JobTest extends CiviUnitTestCase {
    */
   public function testCreate() {
     $result = $this->callAPIAndDocument('job', 'create', $this->_params, __FUNCTION__, __FILE__);
-    $this->assertNotNull($result['values'][0]['id'], 'in line ' . __LINE__);
+    $this->assertNotNull($result['values'][0]['id']);
 
     // mutate $params to match expected return value
     unset($this->_params['sequential']);

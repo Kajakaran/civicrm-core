@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -9,7 +9,7 @@
  |                                                                    |
  | CiviCRM is free software; you can copy, modify, and distribute it  |
  | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007.                                       |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
  |                                                                    |
  | CiviCRM is distributed in the hope that it will be useful, but     |
  | WITHOUT ANY WARRANTY; without even the implied warranty of         |
@@ -17,7 +17,8 @@
  | See the GNU Affero General Public License for more details.        |
  |                                                                    |
  | You should have received a copy of the GNU Affero General Public   |
- | License along with this program; if not, contact CiviCRM LLC       |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
  | at info[AT]civicrm[DOT]org. If you have questions about the        |
  | GNU Affero General Public License or the licensing of CiviCRM,     |
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
@@ -95,6 +96,7 @@ class CRM_Report_Form_Event_IncomeCountSummary extends CRM_Report_Form_Event {
           'event_type_id' => array(
             'name' => 'event_type_id',
             'title' => ts('Event Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Core_OptionGroup::values('event_type'),
           ),
@@ -135,12 +137,14 @@ class CRM_Report_Form_Event_IncomeCountSummary extends CRM_Report_Form_Event {
           'sid' => array(
             'name' => 'status_id',
             'title' => ts('Participant Status'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Event_PseudoConstant::participantStatus(),
           ),
           'rid' => array(
             'name' => 'role_id',
             'title' => ts('Participant Role'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Event_PseudoConstant::participantRole(),
           ),
@@ -244,7 +248,8 @@ class CRM_Report_Form_Event_IncomeCountSummary extends CRM_Report_Form_Event {
             }
           }
           if (!empty($this->_params['id_value'])) {
-            $this->_participantWhere = " AND civicrm_participant.event_id IN ( {$this->_params['id_value']} ) ";
+            $idValue = is_array($this->_params['id_value']) ? implode(',', $this->_params['id_value']) : $this->_params['id_value'];
+            $this->_participantWhere = " AND civicrm_participant.event_id IN ( $idValue ) ";
           }
 
           if (!empty($clause)) {

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,12 +29,10 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
- * Drupal specific stuff goes here
+ * Drupal specific stuff goes here.
  */
 class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
 
@@ -128,9 +126,6 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
    *   Errors.
    * @param string $emailName
    *   Field label for the 'email'.
-   *
-   *
-   * @return void
    */
   public static function checkUserNameEmailExists(&$params, &$errors, $emailName = 'email') {
     // If we are given a name, let's check to see if it already exists.
@@ -222,6 +217,7 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
       case 'html-header':
       case 'page-footer':
         break;
+
       default:
         return FALSE;
     }
@@ -246,6 +242,7 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
       case 'html-header':
       case 'page-footer':
         break;
+
       default:
         return FALSE;
     }
@@ -331,7 +328,6 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
     $query = '',
     $absolute = FALSE,
     $fragment = NULL,
-    $htmlize = FALSE,
     $frontend = FALSE,
     $forceBackend = FALSE
   ) {
@@ -341,11 +337,11 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
 
     // Not all links that CiviCRM generates are Drupal routes, so we use the weaker ::fromUri method.
     try {
-      $url = \Drupal\Core\Url::fromUri("base:{$url['path']}", [
+      $url = \Drupal\Core\Url::fromUri("base:{$url['path']}", array(
         'query' => $url['query'],
         'fragment' => $fragment,
         'absolute' => $absolute,
-      ])->toString();
+      ))->toString();
     }
     catch (Exception $e) {
       // @Todo: log to watchdog
@@ -360,9 +356,6 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
       $url = urldecode($url);
     }
 
-    if ($htmlize) {
-      $url = htmlentities($url);
-    }
     return $url;
   }
 
@@ -457,7 +450,7 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
     chdir($root);
 
     // Create a mock $request object
-    $autoloader = require_once $root . '/core/vendor/autoload.php';
+    $autoloader = require_once $root . '/vendor/autoload.php';
     // @Todo: do we need to handle case where $_SERVER has no HTTP_HOST key, ie. when run via cli?
     $request = new \Symfony\Component\HttpFoundation\Request(array(), array(), array(), array(), array(), $_SERVER);
 
@@ -484,7 +477,8 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
 
   /**
    * Determine the location of the CMS root.
-   * @param null $path
+   *
+   * @param string $path
    *
    * @return NULL|string
    */
@@ -538,6 +532,89 @@ class CRM_Utils_System_Drupal8 extends CRM_Utils_System_DrupalBase {
    */
   public function getDefaultBlockLocation() {
     return 'sidebar_first';
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function flush() {
+    // CiviCRM and Drupal both provide (different versions of) Symfony (and possibly share other classes too).
+    // If we call drupal_flush_all_caches(), Drupal will attempt to rediscover all of its classes, use Civicrm's
+    // alternatives instead and then die. Instead, we only clear cache bins and no more.
+    foreach (Drupal\Core\Cache\Cache::getBins() as $service_id => $cache_backend) {
+      $cache_backend->deleteAll();
+    }
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function getModules() {
+    $modules = array();
+
+    $module_data = system_rebuild_module_data();
+    foreach ($module_data as $module_name => $extension) {
+      if (!isset($extension->info['hidden']) && $extension->origin != 'core') {
+        $extension->schema_version = drupal_get_installed_schema_version($module_name);
+        $modules[] = new CRM_Core_Module('drupal.' . $module_name, ($extension->status == 1 ? TRUE : FALSE));
+      }
+    }
+    return $modules;
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function getUniqueIdentifierFromUserObject($user) {
+    return $user->get('mail')->value;
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function getUserIDFromUserObject($user) {
+    return $user->get('uid')->value;
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function synchronizeUsers() {
+    $config = CRM_Core_Config::singleton();
+    if (PHP_SAPI != 'cli') {
+      set_time_limit(300);
+    }
+
+    $users = array();
+    $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties();
+
+    $uf = $config->userFramework;
+    $contactCount = 0;
+    $contactCreated = 0;
+    $contactMatching = 0;
+    foreach ($users as $user) {
+      $mail = $user->get('mail')->value;
+      if (empty($mail)) {
+        continue;
+      }
+      $uid = $user->get('uid')->value;
+      $contactCount++;
+      if ($match = CRM_Core_BAO_UFMatch::synchronizeUFMatch($user, $uid, $mail, $uf, 1, 'Individual', TRUE)) {
+        $contactCreated++;
+      }
+      else {
+        $contactMatching++;
+      }
+      if (is_object($match)) {
+        $match->free();
+      }
+    }
+
+    return array(
+      'contactCount' => $contactCount,
+      'contactMatching' => $contactMatching,
+      'contactCreated' => $contactCreated,
+    );
   }
 
 }

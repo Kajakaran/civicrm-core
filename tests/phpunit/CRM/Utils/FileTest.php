@@ -1,10 +1,14 @@
 <?php
-require_once 'CiviTest/CiviUnitTestCase.php';
 
 /**
  * Class CRM_Utils_FileTest
+ * @group headless
  */
 class CRM_Utils_FileTest extends CiviUnitTestCase {
+
+  /**
+   * Test is child path.
+   */
   public function testIsChildPath() {
     $testCases = array();
     $testCases[] = array('/ab/cd/ef', '/ab/cd', FALSE);

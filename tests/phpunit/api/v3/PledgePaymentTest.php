@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,12 +25,11 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
 /**
  * Test class for Pledge API - civicrm_pledge_*
  *
  * @package CiviCRM_APIv3
+ * @group headless
  */
 class api_v3_PledgePaymentTest extends CiviUnitTestCase {
 
@@ -49,7 +48,7 @@ class api_v3_PledgePaymentTest extends CiviUnitTestCase {
     parent::setUp();
     $this->_individualId = $this->individualCreate();
     $this->_pledgeID = $this->pledgeCreate($this->_individualId);
-    $this->_contributionID = $this->contributionCreate($this->_individualId);
+    $this->_contributionID = $this->contributionCreate(array('contact_id' => $this->_individualId));
   }
 
   public function tearDown() {
@@ -214,7 +213,12 @@ class api_v3_PledgePaymentTest extends CiviUnitTestCase {
       'sequential' => 1,
     );
 
-    $contributionID = $this->contributionCreate($this->_individualId, $this->_financialTypeId, 45, 45);
+    $contributionID = $this->contributionCreate(array(
+      'contact_id' => $this->_individualId,
+      'financial_type_id' => $this->_financialTypeId,
+      'invoice_id' => 45,
+      'trxn_id' => 45,
+    ));
     $pledge = $this->callAPISuccess('Pledge', 'Create', $pledgeParams);
 
     //test the pledge_payment_create function

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -52,8 +52,8 @@ class CRM_Report_Form_Case_Detail extends CRM_Report_Form {
 
   protected $_caseDetailExtra = array();
 
-  /**
-   */
+  protected $_customGroupExtends = array('Case');
+
   /**
    */
   public function __construct() {
@@ -117,13 +117,15 @@ class CRM_Report_Form_Case_Detail extends CRM_Report_Form {
           ),
           'status_id' => array(
             'title' => ts('Case Status'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
-            'options' => $this->case_statuses,
+            'options' => CRM_Case_BAO_Case::buildOptions('status_id', 'search'),
           ),
           'case_type_id' => array(
             'title' => ts('Case Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
-            'options' => $this->case_types,
+            'options' => CRM_Case_BAO_Case::buildOptions('case_type_id', 'search'),
           ),
           'is_deleted' => array(
             'title' => ts('Deleted?'),
@@ -163,6 +165,7 @@ class CRM_Report_Form_Case_Detail extends CRM_Report_Form {
           'case_role' => array(
             'name' => 'relationship_type_id',
             'title' => ts('Case Role(s)'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => $this->rel_types,
           ),
@@ -412,15 +415,7 @@ class CRM_Report_Form_Case_Detail extends CRM_Report_Form {
               !empty($this->_params['case_type_id_value'])
             ) {
               foreach ($this->_params['case_type_id_value'] as $key => $value) {
-                if (strpos($value, CRM_Core_DAO::VALUE_SEPARATOR) === FALSE) {
-                  $value = CRM_Core_DAO::VALUE_SEPARATOR . $value .
-                    CRM_Core_DAO::VALUE_SEPARATOR;
-
-                  $this->_params['case_type_id_value'][$key] = "'{$value}'";
-                }
-                else {
-                  $this->_params['case_type_id_value'][$key] = $value;
-                }
+                $this->_params['case_type_id_value'][$key] = $value;
               }
             }
 
@@ -471,16 +466,6 @@ class CRM_Report_Form_Case_Detail extends CRM_Report_Form {
     $sql = "{$select} {$this->_from} {$this->_where}";
     $countryCount = CRM_Core_DAO::singleValueQuery($sql);
 
-    //CaseType statistics
-    if (array_key_exists('filters', $statistics)) {
-      foreach ($statistics['filters'] as $id => $value) {
-        if ($value['title'] == 'Case Type') {
-          $statistics['filters'][$id]['value'] = 'Is ' .
-            $this->case_types[substr($statistics['filters'][$id]['value'], -3, -2
-            )];
-        }
-      }
-    }
     $statistics['counts']['case'] = array(
       'title' => ts('Total Number of Cases '),
       'value' => isset($statistics['counts']['rowsFound']) ? $statistics['counts']['rowsFound']['value'] : count($rows),

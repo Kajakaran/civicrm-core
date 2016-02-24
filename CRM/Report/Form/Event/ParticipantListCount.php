@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -46,8 +46,6 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
 
   /**
    */
-  /**
-   */
   public function __construct() {
     $this->_columns = array(
       'civicrm_contact' => array(
@@ -59,16 +57,86 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
             'no_repeat' => TRUE,
             'required' => TRUE,
           ),
+          'first_name' => array(
+            'title' => ts('First Name'),
+          ),
+          'middle_name' => array(
+            'title' => ts('Middle Name'),
+          ),
+          'last_name' => array(
+            'title' => ts('Last Name'),
+          ),
           'id' => array(
             'no_display' => TRUE,
             'required' => TRUE,
           ),
+          'gender_id' => array(
+            'title' => ts('Gender'),
+          ),
+          'birth_date' => array(
+            'title' => ts('Birth Date'),
+          ),
+          'age' => array(
+            'title' => ts('Age'),
+            'dbAlias' => 'TIMESTAMPDIFF(YEAR, contact_civireport.birth_date, CURDATE())',
+          ),
+          'contact_type' => array(
+            'title' => ts('Contact Type'),
+          ),
+          'contact_sub_type' => array(
+            'title' => ts('Contact Subtype'),
+          ),
         ),
-        'grouping' => 'contact-fields',
         'filters' => array(
           'sort_name' => array(
             'title' => ts('Participant Name'),
             'operator' => 'like',
+          ),
+          'id' => array(
+            'title' => ts('Contact ID'),
+            'no_display' => TRUE,
+          ),
+          'gender_id' => array(
+            'title' => ts('Gender'),
+            'operatorType' => CRM_Report_Form::OP_MULTISELECT,
+            'options' => CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id'),
+          ),
+          'birth_date' => array(
+            'title' => ts('Birth Date'),
+            'operatorType' => CRM_Report_Form::OP_DATE,
+          ),
+          'contact_type' => array(
+            'title' => ts('Contact Type'),
+          ),
+          'contact_sub_type' => array(
+            'title' => ts('Contact Subtype'),
+          ),
+        ),
+        'grouping' => 'contact-fields',
+        'order_bys' => array(
+          'sort_name' => array(
+            'title' => ts('Last Name, First Name'),
+            'default' => '1',
+            'default_weight' => '0',
+            'default_order' => 'ASC',
+          ),
+          'first_name' => array(
+            'name' => 'first_name',
+            'title' => ts('First Name'),
+          ),
+          'gender_id' => array(
+            'name' => 'gender_id',
+            'title' => ts('Gender'),
+          ),
+          'birth_date' => array(
+            'name' => 'birth_date',
+            'title' => ts('Birth Date'),
+          ),
+          'contact_type' => array(
+            'title' => ts('Contact Type'),
+          ),
+          'contact_sub_type' => array(
+            'title' => ts('Contact Subtype'),
           ),
         ),
       ),
@@ -166,6 +234,7 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
           'sid' => array(
             'name' => 'status_id',
             'title' => ts('Participant Status'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Event_PseudoConstant::participantStatus(NULL, NULL, 'label'),
           ),
@@ -173,6 +242,7 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
             'name' => 'role_id',
             'title' => ts('Participant Role'),
             'operatorType' => CRM_Report_Form::OP_MULTISELECT_SEPARATOR,
+            'type' => CRM_Utils_Type::T_INT,
             'options' => CRM_Event_PseudoConstant::participantRole(),
           ),
           'participant_register_date' => array(
@@ -204,16 +274,17 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
           'eid' => array(
             'name' => 'event_type_id',
             'title' => ts('Event Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Core_OptionGroup::values('event_type'),
           ),
           'event_start_date' => array(
-            'name' => 'start_date',
+            'name' => 'event_start_date',
             'title' => ts('Event Start Date'),
             'operatorType' => CRM_Report_Form::OP_DATE,
           ),
           'event_end_date' => array(
-            'name' => 'end_date',
+            'name' => 'event_end_date',
             'title' => ts('Event End Date'),
             'operatorType' => CRM_Report_Form::OP_DATE,
           ),
@@ -398,31 +469,13 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
   }
 
   public function groupBy() {
-    $this->_groupBy = "";
-    if (!empty($this->_params['group_bys']) &&
-      is_array($this->_params['group_bys']) &&
-      !empty($this->_params['group_bys'])
-    ) {
-      foreach ($this->_columns as $tableName => $table) {
-        if (array_key_exists('group_bys', $table)) {
-          foreach ($table['group_bys'] as $fieldName => $field) {
-            if (!empty($this->_params['group_bys'][$fieldName])) {
-              $this->_groupBy[] = $field['dbAlias'];
-            }
-          }
-        }
-      }
+    // We override this function because we use GROUP functions in the
+    // SELECT clause, therefore we have to group by *something*. If the
+    // user doesn't select a column to group by, we should group by participant id.
+    parent::groupBy();
+    if (empty($this->_groupBy)) {
+      $this->_groupBy = "GROUP BY {$this->_aliases['civicrm_participant']}.id";
     }
-
-    if (!empty($this->_groupBy)) {
-      $this->_groupBy = "ORDER BY " . implode(', ', $this->_groupBy) .
-        ", {$this->_aliases['civicrm_contact']}.sort_name";
-    }
-    else {
-      $this->_groupBy = "ORDER BY {$this->_aliases['civicrm_contact']}.sort_name";
-    }
-    $this->_groupBy = "GROUP BY {$this->_aliases['civicrm_participant']}.id " .
-      $this->_groupBy;
   }
 
   public function postProcess() {
@@ -535,6 +588,24 @@ class CRM_Report_Form_Event_ParticipantListCount extends CRM_Report_Form_Event {
             $value[$role] = CRM_Event_PseudoConstant::participantRole($role, FALSE);
           }
           $rows[$rowNum]['civicrm_participant_role_id'] = implode(', ', $value);
+        }
+        $entryFound = TRUE;
+      }
+
+      //handle gender
+      if (array_key_exists('civicrm_contact_gender_id', $row)) {
+        if ($value = $row['civicrm_contact_gender_id']) {
+          $gender = CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id');
+          $rows[$rowNum]['civicrm_contact_gender_id'] = $gender[$value];
+        }
+        $entryFound = TRUE;
+      }
+
+      // display birthday in the configured custom format
+      if (array_key_exists('civicrm_contact_birth_date', $row)) {
+        $birthDate = $row['civicrm_contact_birth_date'];
+        if ($birthDate) {
+          $rows[$rowNum]['civicrm_contact_birth_date'] = CRM_Utils_Date::customFormat($birthDate, '%Y%m%d');
         }
         $entryFound = TRUE;
       }

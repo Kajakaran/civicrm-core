@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -91,6 +91,7 @@ class CRM_Report_Form_Event_Summary extends CRM_Report_Form_Event {
           'event_type_id' => array(
             'name' => 'event_type_id',
             'title' => ts('Event Type'),
+            'type' => CRM_Utils_Type::T_INT,
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'options' => CRM_Core_OptionGroup::values('event_type'),
           ),
@@ -162,7 +163,8 @@ class CRM_Report_Form_Event_Summary extends CRM_Report_Form_Event {
             }
           }
           if (!empty($this->_params['id_value'])) {
-            $this->_participantWhere = " AND civicrm_participant.event_id IN ( {$this->_params['id_value']} ) ";
+            $idValue = is_array($this->_params['id_value']) ? implode(',', $this->_params['id_value']) : $this->_params['id_value'];
+            $this->_participantWhere = " AND civicrm_participant.event_id IN ( $idValue ) ";
           }
 
           if (!empty($clause)) {

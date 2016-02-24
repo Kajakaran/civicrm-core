@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,11 +25,10 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
 /**
  * Class contains api test cases for "civicrm_payment_processor"
  *
+ * @group headless
  */
 class api_v3_PaymentProcessorTest extends CiviUnitTestCase {
   protected $_paymentProcessorType;
@@ -76,7 +75,7 @@ class api_v3_PaymentProcessorTest extends CiviUnitTestCase {
   public function testPaymentProcessorCreate() {
     $params = $this->_params;
     $result = $this->callAPIAndDocument('payment_processor', 'create', $params, __FUNCTION__, __FILE__);
-    $this->assertNotNull($result['id'], 'in line ' . __LINE__);
+    $this->assertNotNull($result['id']);
 
     //assertDBState compares expected values in $result to actual values in the DB
     $this->assertDBState('CRM_Financial_DAO_PaymentProcessor', $result['id'], $params);

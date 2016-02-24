@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -29,14 +29,11 @@
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
- * $Id$
- *
  */
 
 /**
  * This class generates form components
  * for previewing Civicrm Profile Group
- *
  */
 class CRM_UF_Form_Inline_Preview extends CRM_UF_Form_AbstractPreview {
 
@@ -44,10 +41,6 @@ class CRM_UF_Form_Inline_Preview extends CRM_UF_Form_AbstractPreview {
    * Pre processing work done here.
    *
    * gets session variables for group or field id
-   *
-   * @param
-   *
-   * @return void
    */
   public function preProcess() {
     if ($_SERVER['REQUEST_METHOD'] != 'POST') {
@@ -56,7 +49,13 @@ class CRM_UF_Form_Inline_Preview extends CRM_UF_Form_AbstractPreview {
       CRM_Core_Error::fatal(ts('Preview only supports HTTP POST'));
     }
     // Inline forms don't get menu-level permission checks
-    if (!CRM_Core_Permission::check('administer CiviCRM')) {
+    $checkPermission = array(
+      array(
+        'administer CiviCRM',
+        'manage event profiles',
+      ),
+    );
+    if (!CRM_Core_Permission::check($checkPermission)) {
       CRM_Core_Error::fatal(ts('Permission Denied'));
     }
     $content = json_decode($_REQUEST['ufData'], TRUE);

@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,14 +25,12 @@
  +--------------------------------------------------------------------+
  */
 
-require_once 'CiviTest/CiviUnitTestCase.php';
-
-
 /**
  *  Test APIv3 civicrm_contribute_recur* functions
  *
  * @package CiviCRM_APIv3
  * @subpackage API_Contribution
+ * @group headless
  */
 class api_v3_ContributionRecurTest extends CiviUnitTestCase {
   protected $_apiversion = 3;
@@ -66,7 +64,7 @@ class api_v3_ContributionRecurTest extends CiviUnitTestCase {
   }
 
   public function testGetContributionRecur() {
-    $result = $this->callAPISuccess($this->_entity, 'create', $this->params);
+    $this->callAPISuccess($this->_entity, 'create', $this->params);
     $getParams = array(
       'amount' => '500',
     );
@@ -74,10 +72,25 @@ class api_v3_ContributionRecurTest extends CiviUnitTestCase {
     $this->assertEquals(1, $result['count']);
   }
 
+  public function testCreateContributionRecurWithToken() {
+    // create token
+    $this->createLoggedInUser();
+    $token = $this->callAPISuccess('PaymentToken', 'create', array(
+      'payment_processor_id' => $this->processorCreate(),
+      'token' => 'hhh',
+      'contact_id' => $this->individualCreate(),
+    ));
+    $params['payment_token_id'] = $token['id'];
+    $result = $this->callAPISuccess($this->_entity, 'create', $this->params);
+    $this->assertEquals(1, $result['count']);
+    $this->assertNotNull($result['values'][$result['id']]['id']);
+    $this->getAndCheck($this->params, $result['id'], $this->_entity);
+  }
+
   public function testDeleteContributionRecur() {
     $result = $this->callAPISuccess($this->_entity, 'create', $this->params);
     $deleteParams = array('id' => $result['id']);
-    $result = $this->callAPIAndDocument($this->_entity, 'delete', $deleteParams, __FUNCTION__, __FILE__);
+    $this->callAPIAndDocument($this->_entity, 'delete', $deleteParams, __FUNCTION__, __FILE__);
     $checkDeleted = $this->callAPISuccess($this->_entity, 'get', array());
     $this->assertEquals(0, $checkDeleted['count']);
   }

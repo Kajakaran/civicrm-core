@@ -1,6 +1,6 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.6                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -25,7 +25,7 @@
 *}
 {if !empty($participantData)}
   <div class="messages status no-popup">
-    <div class="icon ui-icon-alert"></div>
+    <i class="crm-i fa-exclamation-triangle"></i>
     {ts}There are participants registered for repeating events being removed from the set. Those with participants will be converted to standalone events, and those without registration will be deleted.{/ts}
   </div>
   <table class="display">
@@ -48,7 +48,7 @@
 {/if}
 
 <h3>
-  {ts}A recurring set will be created with the following dates.{/ts}
+  {ts}A repeating set will be created with the following dates.{/ts}
 </h3>
 <table class="display row-highlight">
   <thead><tr>
