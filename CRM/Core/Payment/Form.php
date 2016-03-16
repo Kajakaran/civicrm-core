@@ -1,7 +1,7 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.7                                                |
+ | CiviCRM version 4.6                                                |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2015                                |
  +--------------------------------------------------------------------+
@@ -26,18 +26,17 @@
  */
 
 /**
- * Class for constructing the payment processor block.
  *
  * @package CRM
  * @copyright CiviCRM LLC (c) 2004-2015
+ * $Id$
+ *
  */
 class CRM_Core_Payment_Form {
 
 
   /**
-   * Add payment fields depending on payment processor.
-   *
-   * The payment processor can implement the following functions to override the built in fields.
+   * Add payment fields depending on payment processor. The payment processor can implement the following functions to override the built in fields.
    *
    *  - getPaymentFormFields()
    *  - getPaymentFormFieldsMetadata()
@@ -48,101 +47,169 @@ class CRM_Core_Payment_Form {
    * @param CRM_Contribute_Form_AbstractEditPayment|CRM_Contribute_Form_Contribution_Main $form
    * @param array $processor
    *   Array of properties including 'object' as loaded from CRM_Financial_BAO_PaymentProcessor::getPaymentProcessors.
-   * @param int $billing_profile_id
+   * @param bool $forceBillingFieldsForPayLater
    *   Display billing fields even for pay later.
-   * @param bool $isBackOffice
-   *   Is this a back office function? If so the option to suppress the cvn needs to be evaluated.
    */
-  static public function setPaymentFieldsByProcessor(&$form, $processor, $billing_profile_id = NULL, $isBackOffice = FALSE) {
+  static public function setPaymentFieldsByProcessor(&$form, $processor, $forceBillingFieldsForPayLater = FALSE) {
     $form->billingFieldSets = array();
-    // Load the pay-later processor
-    // @todo load this right up where the other processors are loaded initially.
-    if (empty($processor)) {
-      $processor = CRM_Financial_BAO_PaymentProcessor::getPayment(0);
+    if ($processor != NULL) {
+      // ie it is pay later
+      $paymentFields = self::getPaymentFields($processor);
+      $paymentTypeName = self::getPaymentTypeName($processor);
+      $paymentTypeLabel = self::getPaymentTypeLabel($processor);
+      //@todo if we switch to iterating through $form->billingFieldSets we won't need to assign these directly
+      $form->assign('paymentTypeName', $paymentTypeName);
+      $form->assign('paymentTypeLabel', $paymentTypeLabel);
+
+      $form->billingFieldSets[$paymentTypeName]['fields'] = $form->_paymentFields = array_intersect_key(self::getPaymentFieldMetadata($processor), array_flip($paymentFields));
+      $form->billingPane = array($paymentTypeName => $paymentTypeLabel);
+      $form->assign('paymentFields', $paymentFields);
     }
 
-    $processor['object']->setBillingProfile($billing_profile_id);
-    $paymentTypeName = self::getPaymentTypeName($processor);
-    $paymentTypeLabel = self::getPaymentTypeLabel($processor);
-    $form->assign('paymentTypeName', $paymentTypeName);
-    $form->assign('paymentTypeLabel', $paymentTypeLabel);
-    $form->_paymentFields = $form->billingFieldSets[$paymentTypeName]['fields'] = self::getPaymentFieldMetadata($processor);
-    $form->_paymentFields = array_merge($form->_paymentFields, self::getBillingAddressMetadata($processor, $form->_bltID));
-    $form->assign('paymentFields', self::getPaymentFields($processor));
-    self::setBillingAddressFields($form, $processor);
-    // @todo - this may be obsolete - although potentially it could be used to re-order things in the form.
+    // @todo - replace this section with one similar to above per discussion - probably use a manual processor shell class to stand in for that capability
+    //return without adding billing fields if billing_mode = 4 (@todo - more the ability to set that to the payment processor)
+    // or payment processor is NULL (pay later)
+    if (($processor == NULL && !$forceBillingFieldsForPayLater) || CRM_Utils_Array::value('billing_mode', $processor) == 4) {
+      return;
+    }
+    //@todo setPaymentFields defines the billing fields - this should be moved to the processor class & renamed getBillingFields
+    // potentially pay later would also be a payment processor
+    //also set the billingFieldSet to hold all the details required to render the fieldset so we can iterate through the fieldset - making
+    // it easier to re-order in hooks etc. The billingFieldSets param is used to determine whether to show the billing pane
+    CRM_Core_Payment_Form::setBillingDetailsFields($form);
     $form->billingFieldSets['billing_name_address-group']['fields'] = array();
   }
 
   /**
    * Add general billing fields.
+   * @todo set these like processor fields & let payment processors alter them
    *
    * @param CRM_Core_Form $form
-   * @param CRM_Core_Payment $processor
+   *
+   * @return void
    */
-  static protected function setBillingAddressFields(&$form, $processor) {
-    $billingID = $form->_bltID;
+  static protected function setBillingDetailsFields(&$form) {
+    $bltID = $form->_bltID;
+
+    $form->_paymentFields['billing_first_name'] = array(
+      'htmlType' => 'text',
+      'name' => 'billing_first_name',
+      'title' => ts('Billing First Name'),
+      'cc_field' => TRUE,
+      'attributes' => array('size' => 30, 'maxlength' => 60, 'autocomplete' => 'off'),
+      'is_required' => TRUE,
+    );
+
+    $form->_paymentFields['billing_middle_name'] = array(
+      'htmlType' => 'text',
+      'name' => 'billing_middle_name',
+      'title' => ts('Billing Middle Name'),
+      'cc_field' => TRUE,
+      'attributes' => array('size' => 30, 'maxlength' => 60, 'autocomplete' => 'off'),
+      'is_required' => FALSE,
+    );
+
+    $form->_paymentFields['billing_last_name'] = array(
+      'htmlType' => 'text',
+      'name' => 'billing_last_name',
+      'title' => ts('Billing Last Name'),
+      'cc_field' => TRUE,
+      'attributes' => array('size' => 30, 'maxlength' => 60, 'autocomplete' => 'off'),
+      'is_required' => TRUE,
+    );
+
+    $form->_paymentFields["billing_street_address-{$bltID}"] = array(
+      'htmlType' => 'text',
+      'name' => "billing_street_address-{$bltID}",
+      'title' => ts('Street Address'),
+      'cc_field' => TRUE,
+      'attributes' => array('size' => 30, 'maxlength' => 60, 'autocomplete' => 'off'),
+      'is_required' => TRUE,
+    );
+
+    $form->_paymentFields["billing_city-{$bltID}"] = array(
+      'htmlType' => 'text',
+      'name' => "billing_city-{$bltID}",
+      'title' => ts('City'),
+      'cc_field' => TRUE,
+      'attributes' => array('size' => 30, 'maxlength' => 60, 'autocomplete' => 'off'),
+      'is_required' => TRUE,
+    );
+
+    $form->_paymentFields["billing_state_province_id-{$bltID}"] = array(
+      'htmlType' => 'chainSelect',
+      'title' => ts('State/Province'),
+      'name' => "billing_state_province_id-{$bltID}",
+      'cc_field' => TRUE,
+      'is_required' => TRUE,
+    );
+
+    $form->_paymentFields["billing_postal_code-{$bltID}"] = array(
+      'htmlType' => 'text',
+      'name' => "billing_postal_code-{$bltID}",
+      'title' => ts('Postal Code'),
+      'cc_field' => TRUE,
+      'attributes' => array('size' => 30, 'maxlength' => 60, 'autocomplete' => 'off'),
+      'is_required' => TRUE,
+    );
+
+    $form->_paymentFields["billing_country_id-{$bltID}"] = array(
+      'htmlType' => 'select',
+      'name' => "billing_country_id-{$bltID}",
+      'title' => ts('Country'),
+      'cc_field' => TRUE,
+      'attributes' => array(
+        '' => ts('- select -'),
+      ) +
+      CRM_Core_PseudoConstant::country(),
+      'is_required' => TRUE,
+    );
+    //CRM-15509 working towards giving control over billing fields to payment processors. For now removing tpl hard-coding
     $smarty = CRM_Core_Smarty::singleton();
-    $smarty->assign('billingDetailsFields', self::getBillingAddressFields($processor, $billingID));
+    $smarty->assign('billingDetailsFields', array(
+      'billing_first_name',
+      'billing_middle_name',
+      'billing_last_name',
+      "billing_street_address-{$bltID}",
+      "billing_city-{$bltID}",
+      "billing_country_id-{$bltID}",
+      "billing_state_province_id-{$bltID}",
+      "billing_postal_code-{$bltID}",
+    ));
   }
 
   /**
-   * Add the payment fields to the template.
-   *
-   * Generally this is the payment processor fields & the billing fields required
-   * for the payment processor. However, this has been complicated by adding
-   * pay later billing fields into this mix
-   *
-   * We now have the situation where the required fields cannot be set as required
-   * on the form level if they are required for the payment processor, as another
-   * processor might be selected and the validation will then be incorrect.
-   *
-   * However, if they are required for pay later we DO set them on the form level,
-   * presumably assuming they will be required whatever happens.
-   *
-   * As a side-note this seems to re-enforce the argument for making pay later
-   * operate as a payment processor rather than as a 'special thing on its own'.
-   *
    * @param CRM_Core_Form $form
-   *   Form that the payment fields are to be added to.
+   * @param bool $useRequired
    * @param array $paymentFields
-   *   Fields that are to be shown on the payment form.
    */
-  protected static function addCommonFields(&$form, $paymentFields) {
-    $requiredPaymentFields = array();
+  protected static function addCommonFields(&$form, $useRequired, $paymentFields) {
     foreach ($paymentFields as $name => $field) {
       if (!empty($field['cc_field'])) {
         if ($field['htmlType'] == 'chainSelect') {
-          $form->addChainSelect($field['name'], array('required' => FALSE));
+          $form->addChainSelect($field['name'], array('required' => $useRequired && $field['is_required']));
         }
         else {
           $form->add($field['htmlType'],
             $field['name'],
             $field['title'],
             $field['attributes'],
-            FALSE
+            $useRequired ? $field['is_required'] : FALSE
           );
         }
       }
-      // This will cause the fields to be marked as required - but it is up to the payment processor to
-      // validate it.
-      $requiredPaymentFields[$field['name']] = $field['is_required'];
     }
-    $form->assign('requiredPaymentFields', $requiredPaymentFields);
   }
 
   /**
-   * Get the payment fields that apply to this processor.
-   *
    * @param array $paymentProcessor
-   *
-   * @todo sometimes things like the country alter the required fields (e.g direct debit fields). We should possibly
-   * set these before calling getPaymentFormFields (as we identify them).
+   * @todo it will be necessary to set details that affect it - mostly likely take Country as a param. Should we add generic
+   * setParams on processor class or just setCountry which we know we need?
    *
    * @return array
    */
   public static function getPaymentFields($paymentProcessor) {
-    $paymentProcessorObject = Civi\Payment\System::singleton()->getByProcessor($paymentProcessor);
+    $paymentProcessorObject = CRM_Core_Payment::singleton(($paymentProcessor['is_test'] ? 'test' : 'live'), $paymentProcessor);
     return $paymentProcessorObject->getPaymentFormFields();
   }
 
@@ -152,40 +219,8 @@ class CRM_Core_Payment_Form {
    * @return array
    */
   public static function getPaymentFieldMetadata($paymentProcessor) {
-    $paymentProcessorObject = Civi\Payment\System::singleton()->getByProcessor($paymentProcessor);
-    return array_intersect_key($paymentProcessorObject->getPaymentFormFieldsMetadata(), array_flip(self::getPaymentFields($paymentProcessor)));
-  }
-
-  /**
-   * Get the billing fields that apply to this processor.
-   *
-   * @param array $paymentProcessor
-   * @param int $billingLocationID
-   *   ID of billing location type.
-   *
-   * @todo sometimes things like the country alter the required fields (e.g postal code). We should possibly
-   * set these before calling getPaymentFormFields (as we identify them).
-   *
-   * @return array
-   */
-  public static function getBillingAddressFields($paymentProcessor, $billingLocationID) {
-    return $paymentProcessor['object']->getBillingAddressFields($billingLocationID);
-  }
-
-  /**
-   * @param array $paymentProcessor
-   *
-   * @param int $billingLocationID
-   *
-   * @return array
-   * @throws \CRM_Core_Exception
-   */
-  public static function getBillingAddressMetadata($paymentProcessor, $billingLocationID) {
-    $paymentProcessorObject = Civi\Payment\System::singleton()->getByProcessor($paymentProcessor);
-    return array_intersect_key(
-      $paymentProcessorObject->getBillingAddressFieldsMetadata($billingLocationID),
-      array_flip(self::getBillingAddressFields($paymentProcessor, $billingLocationID))
-    );
+    $paymentProcessorObject = CRM_Core_Payment::singleton(($paymentProcessor['is_test'] ? 'test' : 'live'), $paymentProcessor);
+    return $paymentProcessorObject->getPaymentFormFieldsMetadata();
   }
 
   /**
@@ -194,7 +229,8 @@ class CRM_Core_Payment_Form {
    * @return string
    */
   public static function getPaymentTypeName($paymentProcessor) {
-    return $paymentProcessor['object']->getPaymentTypeName();
+    $paymentProcessorObject = CRM_Core_Payment::singleton(($paymentProcessor['is_test'] ? 'test' : 'live'), $paymentProcessor);
+    return $paymentProcessorObject->getPaymentTypeName();
   }
 
   /**
@@ -203,7 +239,7 @@ class CRM_Core_Payment_Form {
    * @return string
    */
   public static function getPaymentTypeLabel($paymentProcessor) {
-    $paymentProcessorObject = Civi\Payment\System::singleton()->getByProcessor($paymentProcessor);
+    $paymentProcessorObject = CRM_Core_Payment::singleton(($paymentProcessor['is_test'] ? 'test' : 'live'), $paymentProcessor);
     return ts(($paymentProcessorObject->getPaymentTypeLabel()) . ' Information');
   }
 
@@ -211,32 +247,31 @@ class CRM_Core_Payment_Form {
    * @param CRM_Contribute_Form_AbstractEditPayment|CRM_Contribute_Form_Contribution_Main|CRM_Core_Payment_ProcessorForm|CRM_Contribute_Form_UpdateBilling $form
    * @param array $processor
    *   Array of properties including 'object' as loaded from CRM_Financial_BAO_PaymentProcessor::getPaymentProcessors.
-   * @param int|string $billing_profile_id
-   *   Id of a profile to be passed to the processor for the processor to merge with it's required fields.
-   *   (currently only implemented by manual/ pay-later processor)
-   *
-   * @param bool $isBackOffice
-   *   Is this a backoffice form. This could affect the display of the cvn or whether some processors show,
-   *   although the distinction is losing it's meaning as front end forms are used for back office and a permission
-   *   for the 'enter without cvn' is probably more appropriate. Paypal std does not support another user
-   *   entering details but once again the issue is not back office but 'another user'.
+   * @param bool $isBillingDataOptional
+   *   This manifests for 'NULL' (pay later) payment processor as the addition of billing fields to the form and.
+   *   for payment processors that gather payment data on site as rendering the fields as not being required. (not entirely sure why but this
+   *   is implemented for back office forms)
    *
    * @return bool
    */
-  public static function buildPaymentForm(&$form, $processor, $billing_profile_id, $isBackOffice) {
+  public static function buildPaymentForm(&$form, $processor, $isBillingDataOptional) {
     //if the form has address fields assign to the template so the js can decide what billing fields to show
     $profileAddressFields = $form->get('profileAddressFields');
     if (!empty($profileAddressFields)) {
       $form->assign('profileAddressFields', $profileAddressFields);
     }
 
-    if (!empty($processor['object']) && $processor['object']->buildForm($form)) {
+    // $processor->buildForm appears to be an undocumented (possibly unused) option for payment processors
+    // which was previously available only in some form flows
+    if (!empty($form->_paymentProcessor) && !empty($form->_paymentProcessor['object']) && $form->_paymentProcessor['object']->isSupported('buildForm')) {
+      $form->_paymentProcessor['object']->buildForm($form);
       return NULL;
     }
 
-    self::setPaymentFieldsByProcessor($form, $processor, $billing_profile_id, $isBackOffice);
-    self::addCommonFields($form, $form->_paymentFields);
+    self::setPaymentFieldsByProcessor($form, $processor, empty($isBillingDataOptional));
+    self::addCommonFields($form, !$isBillingDataOptional, $form->_paymentFields);
     self::addRules($form, $form->_paymentFields);
+    self::addPaypalExpressCode($form);
     return (!empty($form->_paymentFields));
   }
 
@@ -261,20 +296,38 @@ class CRM_Core_Payment_Form {
   }
 
   /**
-   * Validate the payment instrument values before passing it to the payment processor.
+   * Billing mode button is basically synonymous with paypal express  - this is probably a good example of 'odds & sods' code we
+   * need to find a way for the payment processor to assign. A tricky aspect is that the payment processor may need to set the order
    *
-   * We want this to be able to be overridden by the payment processor, and default to using
-   * this object's validCreditCard for credit cards (implemented as the default in the Payment class).
-   *
-   * @param int $payment_processor_id
-   * @param array $values
-   * @param array $errors
-   * @param int $billing_profile_id
+   * @param $form
    */
-  public static function validatePaymentInstrument($payment_processor_id, $values, &$errors, $billing_profile_id) {
-    $payment = Civi\Payment\System::singleton()->getById($payment_processor_id);
-    $payment->setBillingProfile($billing_profile_id);
-    $payment->validatePaymentInstrument($values, $errors);
+  protected static function addPaypalExpressCode(&$form) {
+    if (empty($form->isBackOffice)) {
+      if (CRM_Utils_Array::value('billing_mode', $form->_paymentProcessor) == 3
+      ) {
+        $form->_expressButtonName = $form->getButtonName('upload', 'express');
+        $form->assign('expressButtonName', $form->_expressButtonName);
+        $form->add('image',
+          $form->_expressButtonName,
+          $form->_paymentProcessor['url_button'],
+          array('class' => 'crm-form-submit')
+        );
+      }
+    }
+  }
+
+  /**
+   * Validate the payment instrument values before passing it to the payment processor
+   * We want this to be overrideable by the payment processor, and default to using
+   * this object's validCreditCard for credit cards (implemented as the default in the Payment class).
+   */
+  public static function validatePaymentInstrument($payment_processor_id, $values, &$errors, $form) {
+    // ignore if we don't have a payment instrument to validate (e.g. backend payments)
+    if ($payment_processor_id > 0) {
+      $paymentProcessor = CRM_Financial_BAO_PaymentProcessor::getPayment($payment_processor_id, 'live');
+      $payment = CRM_Core_Payment::singleton('live', $paymentProcessor, $form);
+      $payment->validatePaymentInstrument($values, $errors);
+    }
   }
 
   /**
@@ -293,30 +346,6 @@ class CRM_Core_Payment_Form {
       $creditCardTypes[$key] = $name;
     }
     return $creditCardTypes;
-  }
-
-  /**
-   * Set default values for the form.
-   *
-   * @param CRM_Core_Form $form
-   * @param int $contactID
-   */
-  public static function setDefaultValues(&$form, $contactID) {
-    $billingDefaults = $form->getProfileDefaults('Billing', $contactID);
-    $form->_defaults = array_merge($form->_defaults, $billingDefaults);
-
-    // set default country & state from config if no country set
-    // note the effect of this is to set the billing country to default to the site default
-    // country if the person has an address but no country (for anonymous country is set above)
-    // this could have implications if the billing profile is filled but hidden.
-    // this behaviour has been in place for a while but the use of js to hide things has increased
-    if (empty($form->_defaults["billing_country_id-{$form->_bltID}"])) {
-      $form->_defaults["billing_country_id-{$form->_bltID}"] = CRM_Core_Config::singleton()->defaultContactCountry;
-    }
-    if (empty($form->_defaults["billing_state_province_id-{$form->_bltID}"])) {
-      $form->_defaults["billing_state_province_id-{$form->_bltID}"] = CRM_Core_Config::singleton()
-        ->defaultContactStateProvince;
-    }
   }
 
   /**
@@ -350,26 +379,22 @@ class CRM_Core_Payment_Form {
    * @param bool $reverse
    */
   public static function mapParams($id, $src, &$dst, $reverse = FALSE) {
-    // Set text version of state & country if present.
-    if (isset($src["billing_state_province_id-{$id}"])) {
-      $src["billing_state_province-{$id}"] = CRM_Core_PseudoConstant::stateProvinceAbbreviation($src["billing_state_province_id-{$id}"]);
+    static $map = NULL;
+    if (!$map) {
+      $map = array(
+        'first_name' => 'billing_first_name',
+        'middle_name' => 'billing_middle_name',
+        'last_name' => 'billing_last_name',
+        'email' => "email-$id",
+        'street_address' => "billing_street_address-$id",
+        'supplemental_address_1' => "billing_supplemental_address_1-$id",
+        'city' => "billing_city-$id",
+        'state_province' => "billing_state_province-$id",
+        'postal_code' => "billing_postal_code-$id",
+        'country' => "billing_country-$id",
+        'contactID' => 'contact_id',
+      );
     }
-    if (isset($src["billing_country_id-{$id}"])) {
-      $src["billing_country-{$id}"] = CRM_Core_PseudoConstant::countryIsoCode($src["billing_country_id-{$id}"]);;
-    };
-    $map = array(
-      'first_name' => 'billing_first_name',
-      'middle_name' => 'billing_middle_name',
-      'last_name' => 'billing_last_name',
-      'email' => "email-$id",
-      'street_address' => "billing_street_address-$id",
-      'supplemental_address_1' => "billing_supplemental_address_1-$id",
-      'city' => "billing_city-$id",
-      'state_province' => "billing_state_province-$id",
-      'postal_code' => "billing_postal_code-$id",
-      'country' => "billing_country-$id",
-      'contactID' => 'contact_id',
-    );
 
     foreach ($map as $n => $v) {
       if (!$reverse) {
